@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b080b">
-  <meta name="website-version" content="roma-marquee-fix-v4-desktop-600-mobile-90">
+  <meta name="website-version" content="roma-static-editorial-strip-v5">
   <meta name="description" content="Creations by Roma Apuyan — a photography and videography studio coming soon. Thoughtful portraits, cinematic films and stories worth keeping.">
   <meta name="robots" content="index,follow">
   <meta property="og:type" content="website">
@@ -95,12 +95,18 @@
     .section-label span{display:block;width:32px;height:1px;background:var(--pink-bright)}
     h2{font:400 clamp(56px,6.4vw,88px)/.96 var(--display);letter-spacing:-.04em;margin:0}
     h2 em,.accent-italic{font-style:italic;color:var(--pink)}
-    /* Ticker */
-    .ribbon{border-block:1px solid var(--line);background:#110c12;overflow:hidden}
-    .ribbon-inner{display:flex;gap:42px;align-items:center;padding:21px 0;width:max-content;animation:ticker 600s linear infinite}
-    .ribbon-inner span{font-family:var(--display);font-size:25px;font-style:italic;color:#f1c3d2;white-space:nowrap}
-    .ribbon-inner b{color:var(--pink-bright);font-size:10px;font-weight:400}
-    @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    /* Signature studio strip — stationary, editorial, accessible on every device */
+    .studio-signature{position:relative;isolation:isolate;overflow:hidden;border-block:1px solid var(--line);background:linear-gradient(105deg,#1b101a 0%,#110d13 49%,#1a1018 100%)}
+    .studio-signature::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 6% 30%,rgba(237,124,169,.10),transparent 43%),radial-gradient(ellipse at 96% 90%,rgba(241,211,192,.07),transparent 43%)}
+    .signature-grid{width:var(--content);margin:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}
+    .signature-point{min-width:0;position:relative;display:flex;align-items:center;justify-content:center;gap:14px;padding:29px 14px}
+    .signature-point + .signature-point::before{content:"";position:absolute;left:0;top:27%;bottom:27%;width:1px;background:linear-gradient(180deg,transparent,rgba(247,194,219,.30),transparent)}
+    .signature-icon{flex:none;font:italic 35px/.9 var(--display);color:var(--pink-bright)}
+    .signature-copy{min-width:0}
+    .signature-copy strong{display:block;font:italic 26px/1.05 var(--display);font-weight:400;letter-spacing:-.012em;color:#f9dbe4}
+    .signature-copy small{display:block;margin-top:7px;font-size:9px;font-weight:600;letter-spacing:.20em;text-transform:uppercase;color:#bcabb7}
+    @media(max-width:850px){.signature-point{gap:10px;padding-inline:8px}.signature-icon{font-size:29px}.signature-copy strong{font-size:22px}.signature-copy small{font-size:8px;letter-spacing:.13em}}
+    @media(max-width:650px){.signature-grid{width:min(460px,calc(100% - 44px));grid-template-columns:1fr;padding-block:9px}.signature-point{justify-content:flex-start;gap:18px;padding:14px 20px}.signature-icon{font-size:30px;width:28px;text-align:center}.signature-copy strong{font-size:24px}.signature-copy small{margin-top:4px;font-size:8px;letter-spacing:.17em}.signature-point + .signature-point::before{left:20px;right:20px;top:0;bottom:auto;width:auto;height:1px;background:linear-gradient(90deg,rgba(247,194,219,.26),transparent)}}
     /* Manifesto */
     .manifesto{background:radial-gradient(ellipse at 33% 48%,rgba(131,48,89,.13),transparent 50%)}
     .manifesto-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:8%;align-items:center}
@@ -232,16 +238,6 @@
       .coming h2{font-size:clamp(69px,16vw,100px)}.coming p{font-size:13px}
       .faq .section-pad{padding:70px 0}.footer-grid{flex-direction:column;align-items:flex-start}.footer-bottom{flex-direction:column;align-items:flex-start;line-height:1.8}
     }
-    /* Marquee Fix v4: very slow desktop motion; original comfortable mobile speed. */
-    .ribbon-inner{animation-duration:600s !important}
-    /* Touch-first phones retain the 90-second animation even if requesting desktop layout. */
-    @media (hover:none) and (pointer:coarse){
-      .ribbon-inner{animation-duration:90s !important}
-    }
-    /* Let desktop visitors pause the marquee to read any phrase. */
-    @media (hover:hover) and (pointer:fine){
-      .ribbon:hover .ribbon-inner{animation-play-state:paused}
-    }
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}[data-reveal]{opacity:1;transform:none}}
   </style>
 </head>
@@ -296,12 +292,13 @@
       <div class="hero-scroll">Scroll to explore</div>
     </section>
 
-    <div class="ribbon" aria-label="Photography, videography and timeless storytelling">
-      <div class="ribbon-inner" aria-hidden="true">
-        <span>Photography</span><b>✦</b><span>Beautifully, in motion</span><b>✦</b><span>Every story matters</span><b>✦</b><span>Videography</span><b>✦</b>
-        <span>Photography</span><b>✦</b><span>Beautifully, in motion</span><b>✦</b><span>Every story matters</span><b>✦</b><span>Videography</span><b>✦</b>
+    <aside class="studio-signature" aria-label="Our creative approach">
+      <div class="signature-grid">
+        <div class="signature-point"><span class="signature-icon" aria-hidden="true">01</span><div class="signature-copy"><strong>Beautifully captured.</strong><small>Portraits with purpose</small></div></div>
+        <div class="signature-point"><span class="signature-icon" aria-hidden="true">02</span><div class="signature-copy"><strong>Artfully told.</strong><small>Films full of feeling</small></div></div>
+        <div class="signature-point"><span class="signature-icon" aria-hidden="true">03</span><div class="signature-copy"><strong>Forever cherished.</strong><small>Memories worth keeping</small></div></div>
       </div>
-    </div>
+    </aside>
 
     <section class="manifesto section-pad" id="story">
       <div class="wrap manifesto-grid">
