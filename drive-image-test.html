@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0b080b">
+  <title>Google Drive Image Test | Creations by Roma Apuyan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {color-scheme:dark;--bg:#0b080c;--panel:#1b131b;--pink:#f0b1c8;--text:#fcf6f6;--muted:#c6b3bf;--line:rgba(247,194,219,.21);}
+    * {box-sizing:border-box}
+    body {margin:0;background:radial-gradient(circle at 87% 15%,#3f1e33 0%,var(--bg) 48%);color:var(--text);font-family:'DM Sans',Arial,sans-serif;line-height:1.65;min-height:100vh}
+    .wrap {width:min(1000px,calc(100% - 36px));margin:0 auto;padding:40px 0 56px}
+    .top {display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:23px}
+    .brand {font-family:Georgia,serif;font-size:22px;letter-spacing:.02em;color:var(--pink)}
+    .back {text-decoration:none;color:var(--pink);font-size:13px;border:1px solid var(--line);border-radius:50px;padding:9px 14px}
+    .kicker {margin:40px 0 5px;color:var(--pink);font-size:11px;font-weight:700;letter-spacing:.21em;text-transform:uppercase}
+    h1 {font-family:'Cormorant Garamond',Georgia,serif;font-weight:400;letter-spacing:-.035em;line-height:1.05;font-size:clamp(44px,6vw,68px);margin:0 0 14px}
+    .intro {color:var(--muted);max-width:690px;margin:0 0 27px}
+    .grid {display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .panel {background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+    .panel-body {padding:18px 20px 22px}
+    h2 {font-size:17px;letter-spacing:-.02em;margin:0 0 7px}
+    .hint {font-size:12px;color:var(--muted);margin:0 0 14px}
+    .image-zone {height:345px;background:#2d202c;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+    .image-zone img {width:100%;height:100%;object-fit:contain;display:block}
+    .image-placeholder {position:absolute;color:#e2c3d2;text-align:center;padding:20px;font-size:13px;pointer-events:none}
+    .image-zone.is-loaded .image-placeholder {display:none}
+    iframe {width:100%;height:345px;border:0;background:#2d202c;display:block}
+    .status {font-size:13px;min-height:44px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#251a26;color:var(--text)}
+    .status.success {border-color:#608d76;color:#b6e3c9}
+    .status.failure {border-color:#9b5b63;color:#ffd1d2}
+    .links {display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .links a,.links button {font:600 12px 'DM Sans',Arial,sans-serif;cursor:pointer;text-decoration:none;background:var(--pink);color:#2b0e1b;border:0;padding:11px 14px;border-radius:22px}
+    .links button {background:transparent;color:var(--pink);border:1px solid var(--line)}
+    .foot {font-size:12px;color:var(--muted);margin:22px 0 0}
+    .foot a {color:var(--pink)}
+    @media(max-width:720px) {.grid {grid-template-columns:1fr}.image-zone,iframe {height:320px}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <div class="top"><div class="brand">RA · Creations by Roma Apuyan</div><a class="back" href="/">← Return to website</a></div>
+  <p class="kicker">Stage 5 · Website image integration</p>
+  <h1>Google Drive image test</h1>
+  <p class="intro">This separate page checks whether the test photograph stored in Google Drive can be displayed on your Cloudflare Pages website.</p>
+  <div class="grid">
+    <section class="panel" aria-labelledby="thumbnail-title">
+      <div class="image-zone" id="image-zone"><div class="image-placeholder">Loading Google Drive image…</div><img id="test-image" src="https://drive.google.com/thumbnail?id=1MfKQ97Ungl5ssS7N4_RyLz-w9wb-UxIU&sz=w1600" alt="Test photography image hosted in Google Drive"></div>
+      <div class="panel-body"><h2 id="thumbnail-title">1. Website image</h2><p class="hint">Tests direct display using Google's thumbnail endpoint.</p><div class="status" id="image-status" role="status" aria-live="polite">Checking whether the image loads…</div><div class="links"><button type="button" id="retry">Try image again</button></div></div>
+    </section>
+    <section class="panel" aria-labelledby="preview-title">
+      <iframe src="https://drive.google.com/file/d/1MfKQ97Ungl5ssS7N4_RyLz-w9wb-UxIU/preview" title="Google Drive photo preview" loading="lazy" referrerpolicy="no-referrer" allowfullscreen></iframe>
+      <div class="panel-body"><h2 id="preview-title">2. Google Drive preview</h2><p class="hint">Shows the standard Google Drive file preview, which may behave differently from a website image.</p><div class="status">Look above: your photograph should be visible without a Google sign-in.</div><div class="links"><a href="https://drive.google.com/file/d/1MfKQ97Ungl5ssS7N4_RyLz-w9wb-UxIU/view?usp=sharing" target="_blank" rel="noopener noreferrer">Open original image in Google Drive ↗</a></div></div>
+    </section>
+  </div>
+  <p class="foot">Test file ID: <code>1MfKQ97Ungl5ssS7N4_RyLz-w9wb-UxIU</code>. A successful test here does not guarantee unlimited traffic or future availability from Google Drive.</p>
+</main>
+<script>
+(function () {
+  'use strict';
+  const img = document.getElementById('test-image');
+  const status = document.getElementById('image-status');
+  const zone = document.getElementById('image-zone');
+  const retry = document.getElementById('retry');
+  function loaded() {
+    if (!img.naturalWidth) { failed(); return; }
+    status.textContent = 'SUCCESS: Google Drive image is visible as a website image.';
+    status.className = 'status success';
+    zone.classList.add('is-loaded');
+  }
+  function failed() {
+    status.textContent = 'IMAGE DID NOT LOAD. Check the Google Drive preview beside it; the direct image address may be blocked or unavailable.';
+    status.className = 'status failure';
+    zone.classList.remove('is-loaded');
+  }
+  img.addEventListener('load', loaded);
+  img.addEventListener('error', failed);
+  retry.addEventListener('click', function () {
+    status.textContent = 'Trying the image again…';
+    status.className = 'status';
+    zone.classList.remove('is-loaded');
+    img.src = 'https://drive.google.com/thumbnail?id=1MfKQ97Ungl5ssS7N4_RyLz-w9wb-UxIU&sz=w1600&retry=' + Date.now();
+  });
+  if (img.complete) { if (img.naturalWidth) loaded(); else failed(); }
+})();
+</script>
+</body>
+</html>
