@@ -131,6 +131,11 @@
     .service p{color:var(--muted);font-size:12px;line-height:1.85;margin:0}
     .service-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:24px;color:var(--dim);font-size:9px;letter-spacing:.18em;text-transform:uppercase}
     .service-foot b{font-size:17px;color:var(--pink);font-weight:400}
+    /* Google Drive service images are optional; text stays readable over banners. */
+    .service > .service-drive-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.24;z-index:0;pointer-events:none}
+    .service > .service-drive-image[hidden]{display:none}
+    .service:has(> .service-drive-image:not([hidden])){background:linear-gradient(155deg,rgba(18,8,16,.8),rgba(15,8,14,.87))}
+    .service > :not(.service-drive-image){position:relative;z-index:1}
     /* Moodboard gallery */
     .gallery{padding-bottom:125px}
     .gallery-header{margin-bottom:50px}
@@ -280,10 +285,10 @@
         <div class="hero-side" data-reveal>
           <div class="hero-glow" aria-hidden="true"></div>
           <div class="hero-photo primary">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&amp;fit=crop&amp;w=1000&amp;q=85" alt="Inspiration image: an editorial portrait" fetchpriority="high">
+            <img data-drive-slot="hero_primary" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&amp;fit=crop&amp;w=1000&amp;q=85" alt="Inspiration image: an editorial portrait" fetchpriority="high">
           </div>
           <div class="hero-photo secondary">
-            <img src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="Inspiration image: a couple on their wedding day">
+            <img data-drive-slot="hero_secondary" src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&amp;fit=crop&amp;w=700&amp;q=80" alt="Inspiration image: a couple on their wedding day">
           </div>
           <div class="round-seal" aria-hidden="true">with<br>love.</div>
           <div class="hero-side-note"><i></i> Beauty in every frame</div>
@@ -325,6 +330,7 @@
         </div>
         <div class="service-grid">
           <article class="service" data-reveal>
+            <img class="service-drive-image" data-drive-slot="service_portraits" hidden alt="" loading="lazy">
             <div class="service-number">01 / PHOTOGRAPHY</div>
             <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h3l2-2h4l2 2h3a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="12.5" r="3.5"/></svg></div>
             <h3>Portrait &amp;<br>Lifestyle</h3>
@@ -332,6 +338,7 @@
             <div class="service-foot">Planned offering <b aria-hidden="true">↗</b></div>
           </article>
           <article class="service" data-reveal>
+            <img class="service-drive-image" data-drive-slot="service_events" hidden alt="" loading="lazy">
             <div class="service-number">02 / PHOTOGRAPHY</div>
             <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/></svg></div>
             <h3>Events &amp;<br>Milestones</h3>
@@ -339,6 +346,7 @@
             <div class="service-foot">Planned offering <b aria-hidden="true">↗</b></div>
           </article>
           <article class="service" data-reveal>
+            <img class="service-drive-image" data-drive-slot="service_films" hidden alt="" loading="lazy">
             <div class="service-number">03 / VIDEOGRAPHY</div>
             <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="m16 10 6-4v12l-6-4"/></svg></div>
             <h3>Cinematic<br>Films</h3>
@@ -346,6 +354,7 @@
             <div class="service-foot">Planned offering <b aria-hidden="true">↗</b></div>
           </article>
           <article class="service" data-reveal>
+            <img class="service-drive-image" data-drive-slot="service_editorial" hidden alt="" loading="lazy">
             <div class="service-number">04 / CREATIVE CONTENT</div>
             <div class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 2.1 7.9L22 12l-7.9 2.1L12 22l-2.1-7.9L2 12l7.9-2.1z"/></svg></div>
             <h3>Brand &amp;<br>Editorial</h3>
@@ -365,32 +374,32 @@
           </div>
           <div class="gallery-note">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
-            Inspiration imagery from Unsplash; these are sample photos, not Roma Apuyan's past projects or client portfolio.
+            Images in this gallery include Unsplash inspiration and photographs supplied through our Google Drive collection.
           </div>
         </div>
         <div class="gallery-grid">
           <button class="gallery-item" data-title="Unscripted beauty" type="button" aria-label="View sample inspiration image Unscripted beauty" data-reveal>
-            <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&amp;fit=crop&amp;w=950&amp;q=80" loading="lazy" alt="Moodboard inspiration: fashion portrait">
+            <img data-drive-slot="gallery_1" src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&amp;fit=crop&amp;w=950&amp;q=80" loading="lazy" alt="Moodboard inspiration: fashion portrait">
             <div class="photo-label"><span>01 · Portraits</span><strong>Unscripted beauty</strong></div><span class="expand" aria-hidden="true">↗</span>
           </button>
           <button class="gallery-item" data-title="Love, in the details" type="button" aria-label="View sample inspiration image Love in the details" data-reveal>
-            <img src="https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&amp;fit=crop&amp;w=800&amp;q=80" loading="lazy" alt="Moodboard inspiration: romantic celebration">
+            <img data-drive-slot="gallery_2" src="https://images.unsplash.com/photo-1532712938310-34cb3982ef74?auto=format&amp;fit=crop&amp;w=800&amp;q=80" loading="lazy" alt="Moodboard inspiration: romantic celebration">
             <div class="photo-label"><span>02 · Milestones</span><strong>Love, in the details</strong></div><span class="expand" aria-hidden="true">↗</span>
           </button>
           <button class="gallery-item" data-title="Framed in feeling" type="button" aria-label="View sample inspiration image Framed in feeling" data-reveal>
-            <img src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&amp;fit=crop&amp;w=750&amp;q=80" loading="lazy" alt="Moodboard inspiration: filmmaking and cinema">
+            <img data-drive-slot="gallery_3" src="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&amp;fit=crop&amp;w=750&amp;q=80" loading="lazy" alt="Moodboard inspiration: filmmaking and cinema">
             <div class="photo-label"><span>03 · Film</span><strong>Framed in feeling</strong></div><span class="expand" aria-hidden="true">↗</span>
           </button>
           <button class="gallery-item" data-title="Every shade of you" type="button" aria-label="View sample inspiration image Every shade of you" data-reveal>
-            <img src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&amp;fit=crop&amp;w=750&amp;q=80" loading="lazy" alt="Moodboard inspiration: editorial fashion styling">
+            <img data-drive-slot="gallery_4" src="https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&amp;fit=crop&amp;w=750&amp;q=80" loading="lazy" alt="Moodboard inspiration: editorial fashion styling">
             <div class="photo-label"><span>04 · Editorial</span><strong>Every shade of you</strong></div><span class="expand" aria-hidden="true">↗</span>
           </button>
           <button class="gallery-item" data-title="The beautiful ordinary" type="button" aria-label="View sample inspiration image The beautiful ordinary" data-reveal>
-            <img src="https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&amp;fit=crop&amp;w=900&amp;q=80" loading="lazy" alt="Moodboard inspiration: intimate family moment">
+            <img data-drive-slot="gallery_5" src="https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&amp;fit=crop&amp;w=900&amp;q=80" loading="lazy" alt="Moodboard inspiration: intimate family moment">
             <div class="photo-label"><span>05 · Lifestyle</span><strong>The beautiful ordinary</strong></div><span class="expand" aria-hidden="true">↗</span>
           </button>
           <button class="gallery-item" data-title="The story continues" type="button" aria-label="View sample inspiration image The story continues" data-reveal>
-            <img src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&amp;fit=crop&amp;w=1500&amp;q=80" loading="lazy" alt="Moodboard inspiration: an elegant event setting">
+            <img data-drive-slot="gallery_6" src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&amp;fit=crop&amp;w=1500&amp;q=80" loading="lazy" alt="Moodboard inspiration: an elegant event setting">
             <div class="photo-label"><span>06 · Celebrations</span><strong>The story continues</strong></div><span class="expand" aria-hidden="true">↗</span>
           </button>
         </div>
@@ -441,7 +450,7 @@
     <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close photo preview">×</button>
     <img id="lightbox-image" src="" alt="">
     <p id="lightbox-title"></p>
-    <small>Sample inspiration image · Unsplash · Not studio portfolio work</small>
+    <small id="lightbox-source">Sample inspiration image · Unsplash · Not studio portfolio work</small>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite">Website link copied!</div>
 
@@ -454,6 +463,7 @@
       const lightbox = document.getElementById('lightbox');
       const lightboxImage = document.getElementById('lightbox-image');
       const lightboxTitle = document.getElementById('lightbox-title');
+      const lightboxSource = document.getElementById('lightbox-source');
       const closeLightboxBtn = document.getElementById('lightbox-close');
       const year = document.getElementById('year');
       const toast = document.getElementById('toast');
@@ -498,6 +508,7 @@
         lightboxImage.src = item.querySelector('img').src;
         lightboxImage.alt = item.querySelector('img').alt;
         lightboxTitle.textContent = item.dataset.title;
+        lightboxSource.textContent = item.dataset.source === 'google-drive' ? 'Photo from our Google Drive collection' : 'Sample inspiration image · Unsplash · Not studio portfolio work';
         lightbox.classList.add('open');
         lightbox.setAttribute('aria-hidden','false');
         document.body.classList.add('no-scroll');
@@ -526,5 +537,6 @@
       });
     })();
   </script>
+  <script src="assets/js/drive-images.js?v=6" defer></script>
 </body>
 </html>
