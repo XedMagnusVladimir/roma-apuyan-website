@@ -7,7 +7,15 @@ let pageContentRows=[];
 const CUSTOMERS_PAGE_SIZE=50;
 let user, bookings=[],selectedBooking=null,services=[],methods=[],options=[],serviceMethodLinks=[], blocked=[],imageRows=[],calendar=null;
 const imageSlots=[['hero_primary','Homepage — main photo','hero'],['hero_secondary','Homepage — second photo','hero'], ...Array.from({length:6},(_,i)=>[`gallery_${i+1}`,`Gallery — photo ${i+1}`,'gallery']),['service_portraits','Service card — portraits','website'],['service_events','Service card — events','website'],['service_films','Service card — films','website'],['service_editorial','Service card — editorial','website']];
-function safe(fn){return async e=>{try{R.clear();if(e?.type==='submit'&&e.preventDefault)e.preventDefault();await fn(e)}catch(err){R.notify(R.readable(err),'error')}}}
+function safe(fn){return async e=>{
+  const form=e?.type==='submit'&&e.target instanceof HTMLFormElement?e.target:null;
+  if(form){e.preventDefault();if(form.dataset.busy==='1')return;form.dataset.busy='1';form.setAttribute('aria-busy','true');}
+  const button=form?.querySelector('button[type="submit"]');const oldText=button?.textContent;
+  if(button){button.disabled=true;button.textContent='Saving…';}
+  try{R.clear();await fn(e)}catch(err){R.notify(R.readable(err),'error');}
+  finally{if(button?.isConnected){button.disabled=false;button.textContent=oldText;}
+    if(form){delete form.dataset.busy;form.removeAttribute('aria-busy');}}
+}}
 function tab(which){
   activeAdminTab=which;
   document.querySelectorAll('[data-admin-tab]').forEach(b=>{
@@ -185,7 +193,7 @@ async function saveService(e){
  if(!chosenOptions.length)throw Error('Select at least one payment arrangement for this package.');
  if(!Number.isFinite(Number(f.elements.price.value)) || Number(f.elements.price.value)<=0)throw Error('Enter a valid package price.');
  const file=f.elements.image_file.files[0];let image=String(f.elements.image.value||'').trim();
- if(file){$('service-image-state').textContent='Uploading banner to Google Drive…';image=await R.uploadToDrive(await R.preparePublicImage(file,'banner'),'service_banner');}
+ if(file){$('service-image-state').textContent='Uploading banner to Google Drive…';image=await R.uploadToDrive(await R.preparePublicImage(file,'banner'),'service_banner',null,message=>$('service-image-state').textContent=message);}
  const data=await R.rpc('roma_admin_save_package',{
   p_id:f.elements.id.value||null,p_name:f.elements.name.value.trim(),p_description:f.elements.description.value.trim(),
   p_base_price_centavos:Math.round(Number(f.elements.price.value)*100),
@@ -260,17 +268,52 @@ function updatePackagePrerequisite(){
 }
 function methodReset(){const f=$('method-form');f.reset();f.elements.id.value='';f.elements.is_active.checked=true;$('method-qr-state').textContent='';setMediaPreview('method-icon-preview','','No payment icon uploaded');setMediaPreview('method-qr-preview','','No QR image uploaded');}
 function editMethod(id){const m=methods.find(x=>x.id===id);if(!m)return;const f=$('method-form');f.elements.icon_file.value='';f.elements.qr_file.value='';f.elements.id.value=m.id;f.elements.name.value=m.name;f.elements.provider.value=m.provider;f.elements.holder.value=m.account_holder;f.elements.details.value=m.account_details;f.elements.instructions.value=m.instructions;f.elements.qr.value=m.qr_drive_file_id||'';f.elements.icon.value=m.icon_drive_file_id||'';setMediaPreview('method-icon-preview',m.icon_drive_file_id,'No payment icon uploaded');setMediaPreview('method-qr-preview',m.qr_drive_file_id,'No QR image uploaded');$('method-qr-state').textContent=m.qr_drive_file_id?'QR image attached; upload another to replace it.':'No QR image attached.';f.elements.is_active.checked=m.is_active;tab('payments');f.scrollIntoView({behavior:'smooth'});}
-async function saveMethod(e){const f=e.currentTarget;const file=f.elements.qr_file.files[0];let parsed=String(f.elements.qr.value||'').trim();if(file){$('method-qr-state').textContent='Uploading QR image to Google Drive…';parsed=await R.uploadToDrive(await R.preparePublicImage(file,'icon'),'payment_qr');$('method-qr-state').textContent='QR image uploaded.';}if(!f.elements.name.value.trim()||!f.elements.holder.value.trim()||!f.elements.details.value.trim())throw Error('Payment method name, account holder, and account details are required.');let iconId=String(f.elements.icon.value||'').trim();const iconFile=f.elements.icon_file.files[0];if(iconFile){iconId=await R.uploadToDrive(await R.preparePublicImage(iconFile,'icon'),'payment_icon');}const data={icon_drive_file_id:iconId||null,name:f.elements.name.value.trim(),provider:f.elements.provider.value.trim(),account_holder:f.elements.holder.value.trim(),account_details:f.elements.details.value.trim(),instructions:f.elements.instructions.value.trim(),qr_drive_file_id:parsed||null,is_active:f.elements.is_active.checked};const id=f.elements.id.value;
-if(id)R.check(await db.from('payment_methods').update(data).eq('id',id));else R.check(await db.from('payment_methods').insert(data));R.notify('Payment method saved.','success');await loadMethods();methodReset();}
+async function saveMethod(e){
+ const f=e.currentTarget;
+ if(!f.elements.name.value.trim()||!f.elements.holder.value.trim()||!f.elements.details.value.trim())throw Error('Payment method name, account holder and account details are required.');
+ const state=$('method-qr-state');
+ const qrFile=f.elements.qr_file.files[0],iconFile=f.elements.icon_file.files[0];
+ let qr=String(f.elements.qr.value||'').trim(),iconId=String(f.elements.icon.value||'').trim();
+ if(qrFile){state.textContent='Resizing QR image…';qr=await R.uploadToDrive(await R.preparePublicImage(qrFile,'icon'),'payment_qr',null,msg=>state.textContent='QR: '+msg);}
+ if(iconFile){state.textContent='Resizing payment icon…';iconId=await R.uploadToDrive(await R.preparePublicImage(iconFile,'icon'),'payment_icon',null,msg=>state.textContent='Icon: '+msg);}
+ state.textContent='Saving payment method details…';
+ const data={icon_drive_file_id:iconId||null,name:f.elements.name.value.trim(),provider:f.elements.provider.value.trim(),account_holder:f.elements.holder.value.trim(),account_details:f.elements.details.value.trim(),instructions:f.elements.instructions.value.trim(),qr_drive_file_id:qr||null,is_active:f.elements.is_active.checked};
+ const id=f.elements.id.value;
+ if(id)R.check(await db.from('payment_methods').update(data).eq('id',id));
+ else R.check(await db.from('payment_methods').insert(data));
+ state.textContent='Saved successfully.';
+ await loadMethods();methodReset();R.notify('Payment method updated successfully.','success');
+}
 async function loadBlocked(){blocked=R.check(await db.from('blocked_dates').select('*').order('event_date'));$('blocked-list').innerHTML=blocked.length?blocked.map(d=>`<div class="roma-booking">${R.datePH(d.event_date)} — ${R.esc(d.reason)} <button class="roma-btn secondary tiny" data-unblock="${d.event_date}">Unblock</button></div>`).join(''):'<p class="roma-muted">No manually blocked dates.</p>';}
-async function loadImages(){imageRows=R.check(await db.from('site_images').select('*'));$('image-positions').innerHTML=imageSlots.map(([slot,label])=>{const row=imageRows.find(x=>x.slot_key===slot);return `<div class="roma-card"><h3>${R.esc(label)}</h3><div class="roma-preview-box roma-preview-current">${row?.drive_file_id?`<img src="${R.image(row.drive_file_id)}" alt="Current ${R.esc(label)}" loading="lazy">`:window.RomaImageFallbacks?.[slot]?`<img src="${R.esc(window.RomaImageFallbacks[slot])}" alt="Current default ${R.esc(label)}" loading="lazy">`:'<span class="roma-preview-empty">No image assigned</span>'}</div><p class="roma-muted roma-preview-caption">Current image shown above</p><form data-image-form="${slot}"><label class="roma-field">Upload image to Google Drive<input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"></label><input name="image" type="hidden" value="${R.esc(row?.drive_file_id||'')}"><label class="roma-field">Image title<input name="title" maxlength="140" value="${R.esc(row?.title||label)}"></label><label class="roma-field"><span><input name="active" type="checkbox" ${row?.is_active!==false?'checked':''}> Display this image</span></label><button class="roma-btn" type="submit">Save image</button></form></div>`}).join('');}
-async function saveImage(e){const f=e.target;const slot=f.dataset.imageForm;const lookup=imageSlots.find(x=>x[0]===slot);if(!lookup)throw Error('Invalid image slot.');const file=f.elements.image_file.files[0];const id=file?await R.uploadToDrive(await R.preparePublicImage(file,'website'),'site_image'):f.elements.image.value.trim();const existing=imageRows.find(x=>x.slot_key===slot);if(!id){if(existing)R.check(await db.from('site_images').delete().eq('id',existing.id));}else{const data={slot_key:slot,placement:lookup[2],title:f.elements.title.value.trim()||lookup[1],drive_file_id:id,is_active:f.elements.active.checked};if(existing)R.check(await db.from('site_images').update(data).eq('id',existing.id));else R.check(await db.from('site_images').insert(data));}
+async function loadImages(){imageRows=R.check(await db.from('site_images').select('*'));$('image-positions').innerHTML=imageSlots.map(([slot,label])=>{const row=imageRows.find(x=>x.slot_key===slot);return `<div class="roma-card"><h3>${R.esc(label)}</h3><div class="roma-preview-box roma-preview-current">${row?.drive_file_id?`<img src="${R.image(row.drive_file_id)}" alt="Current ${R.esc(label)}" loading="lazy">`:window.RomaImageFallbacks?.[slot]?`<img src="${R.esc(window.RomaImageFallbacks[slot])}" alt="Current default ${R.esc(label)}" loading="lazy">`:'<span class="roma-preview-empty">No image assigned</span>'}</div><p class="roma-muted roma-preview-caption">Current image shown above</p><form data-image-form="${slot}"><label class="roma-field">Upload image to Google Drive<input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"></label><input name="image" type="hidden" value="${R.esc(row?.drive_file_id||'')}"><label class="roma-field">Image title<input name="title" maxlength="140" value="${R.esc(row?.title||label)}"></label><label class="roma-field"><span><input name="active" type="checkbox" ${row?.is_active!==false?'checked':''}> Display this image</span></label><p class="roma-upload-state" data-upload-state role="status"></p><button class="roma-btn" type="submit">Save image</button></form></div>`}).join('');}
+async function saveImage(e){const f=e.target;const slot=f.dataset.imageForm;const lookup=imageSlots.find(x=>x[0]===slot);if(!lookup)throw Error('Invalid image slot.');const file=f.elements.image_file.files[0];const status=f.querySelector('[data-upload-state]');if(status)status.textContent=file?'Optimizing image…':'Saving image settings…';const id=file?await R.uploadToDrive(await R.preparePublicImage(file,'website'),'site_image',null,msg=>{if(status)status.textContent=msg;}):f.elements.image.value.trim();const existing=imageRows.find(x=>x.slot_key===slot);if(!id){if(existing)R.check(await db.from('site_images').delete().eq('id',existing.id));}else{const data={slot_key:slot,placement:lookup[2],title:f.elements.title.value.trim()||lookup[1],drive_file_id:id,is_active:f.elements.active.checked};if(existing)R.check(await db.from('site_images').update(data).eq('id',existing.id));else R.check(await db.from('site_images').insert(data));}
 R.notify('Image saved. Your public website will use this Google Drive image.','success');await loadImages();}
+
+// Show a small local preview immediately upon file selection; release the object URL on change.
+const livePreviewUrls=new WeakMap();
+document.addEventListener('change',e=>{
+ const input=e.target;if(!(input instanceof HTMLInputElement)||input.type!=='file'||!input.files?.[0])return;
+ const form=input.form;let target=null;
+ if(form?.id==='method-form')target=input.name==='icon_file'?'method-icon-preview':input.name==='qr_file'?'method-qr-preview':null;
+ if(form?.id==='service-form')target='service-image-preview';
+ if(form?.dataset.imageForm)target=form.querySelector('.roma-preview-current')?.id||null;
+ if(!target && form?.dataset.imageForm){const preview=form.closest('.roma-card')?.querySelector('.roma-preview-current');if(preview){
+    const last=livePreviewUrls.get(preview);if(last)URL.revokeObjectURL(last);
+    const next=URL.createObjectURL(input.files[0]);livePreviewUrls.set(preview,next);
+    preview.innerHTML='<img alt="New selected image preview">';preview.querySelector('img').src=next;
+    return;
+ }}
+ const el=target?$(target):null;
+ if(el){const last=livePreviewUrls.get(el);if(last)URL.revokeObjectURL(last);
+    const next=URL.createObjectURL(input.files[0]);livePreviewUrls.set(el,next);
+    el.innerHTML='<img alt="New selected image preview">';el.querySelector('img').src=next;
+ }
+});
 $('admin-login').addEventListener('submit',safe(async e=>{const f=e.currentTarget;R.check(await db.auth.signInWithPassword({email:f.elements.email.value.trim(),password:f.elements.password.value}));await initialize();}));
 $('admin-logout').addEventListener('click',safe(async()=>{R.check(await db.auth.signOut());user=null;selectedBooking=null;await initialize();}));
 document.querySelectorAll('[data-admin-tab]').forEach(b=>b.addEventListener('click',()=>{tab(b.dataset.adminTab);if(b.dataset.adminTab==='customers')loadCustomers().catch(e=>R.notify(R.readable(e),'error'));}));
 $('refresh-customers').addEventListener('click',safe(loadCustomers));
-$('drive-health-test')?.addEventListener('click',safe(async()=>{const el=$('drive-health-result');el.textContent='Checking Google Drive gateway…';const {data,error}=await db.functions.invoke('roma-drive-media',{body:{action:'health'}});if(error)throw error;if(!data?.ok)throw Error(data?.error||'Google Drive gateway unavailable');el.textContent='Google Drive gateway connected: '+(data.root_folder_name||'Business folder')+'.';R.notify('Drive gateway connected.','success');}));
+$('drive-health-test')?.addEventListener('click',safe(async()=>{const el=$('drive-health-result');el.textContent='Checking Google Drive gateway…';const folder=await R.checkDriveGateway();el.textContent='Google Drive gateway connected: '+folder+'.';R.notify('Drive gateway connected.','success');}));
 $('customer-search').addEventListener('input',()=>{
   window.clearTimeout(customerSearchTimer);
   customerSearchTimer=window.setTimeout(()=>{customerOffset=0;loadCustomers();},300);

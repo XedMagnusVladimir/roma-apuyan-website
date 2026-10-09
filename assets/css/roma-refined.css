@@ -165,3 +165,27 @@ body:not(.roma-app) .nav-links a[href='booking.html'] {color:#f2bdd0;}
 @media(max-width:700px){.roma-cms-grid{grid-template-columns:1fr}}
 
 .roma-customer-method-icon{float:left;width:58px;height:58px;aspect-ratio:1;object-fit:contain;border-radius:12px;margin:0 14px 12px 0;background:#261823;padding:5px}
+
+
+/* STAGE 16: tightly bounded thumbnails, balanced action buttons, clear upload states */
+#admin-images #image-positions .roma-preview-box,
+#admin-services .roma-preview-box,
+#admin-payments .roma-preview-box {width:100%!important;max-width:100%!important;max-height:205px!important;height:165px!important;min-height:0!important;margin:10px 0 7px!important;overflow:hidden!important;display:flex!important;justify-content:center!important;align-items:center!important;background:#110c12!important;border-radius:12px!important}
+#admin-images #image-positions .roma-preview-box img,
+#admin-services .roma-preview-box img,
+#admin-payments .roma-preview-box img {display:block!important;width:auto!important;max-width:100%!important;max-height:148px!important;height:auto!important;object-fit:contain!important;aspect-ratio:auto!important;margin:auto!important}
+#admin-images #image-positions .roma-card{min-width:0;overflow:hidden}
+#admin-images #image-positions .roma-preview-box{height:146px!important}
+#admin-images #image-positions .roma-preview-box img{max-height:126px!important;max-width:230px!important}
+#admin-payments .roma-preview-icon{height:125px!important;max-width:190px!important;margin-inline:auto!important}
+#admin-payments .roma-preview-icon img{max-width:106px!important;max-height:106px!important}
+#admin-payments .roma-preview-qr{height:150px!important;max-width:210px!important;margin-inline:auto!important}
+#admin-payments .roma-preview-qr img{max-width:137px!important;max-height:137px!important}
+#admin-payments .roma-form-actions{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px;margin:16px auto 0;padding:6px 0 4px}
+#admin-payments .roma-form-actions .roma-btn{min-width:155px;margin:0;min-height:44px}
+#admin-payments .roma-method-active{display:flex;align-items:center;gap:10px;margin:10px 0 14px}
+#admin-payments .roma-method-active input{width:16px;height:16px;flex:0 0 16px}
+.roma-upload-state{font-size:12px;line-height:1.6;color:#e8bed0;min-height:1.5em;margin:7px 0 10px}
+.roma-app form[aria-busy="true"] button[type=submit]{opacity:.68;cursor:wait}
+.roma-app .roma-preview-caption{font-size:12px;line-height:1.55;letter-spacing:0;color:#c7a9b9}
+@media(max-width:600px){#admin-payments .roma-form-actions .roma-btn{flex:1;min-width:120px}}

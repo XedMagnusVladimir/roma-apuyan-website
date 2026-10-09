@@ -3,7 +3,15 @@
 const R=window.Roma, db=R.client;
 let user=null,services=[],options=[], unavailable=[], myBookings=[],selected=null,methods=[],calendar=null;
 const $=R.qs;
-function safe(fn){return async e=>{try{R.clear(); if(e?.type==='submit'&&e.preventDefault)e.preventDefault(); await fn(e)}catch(err){R.notify(R.readable(err),'error')} }}
+function safe(fn){return async e=>{
+  const form=e?.type==='submit'&&e.target instanceof HTMLFormElement?e.target:null;
+  if(form){e.preventDefault();if(form.dataset.busy==='1')return;form.dataset.busy='1';form.setAttribute('aria-busy','true');}
+  const button=form?.querySelector('button[type="submit"]'),old=button?.textContent;
+  if(button){button.disabled=true;button.textContent='Working…';}
+  try{R.clear();await fn(e)}catch(err){R.notify(R.readable(err),'error');}
+  finally{if(button?.isConnected && form?.dataset.submitted!=='1'){button.disabled=false;button.textContent=old;}
+    if(form){delete form.dataset.busy;form.removeAttribute('aria-busy');}}
+}}
 function showTab(name){['browse','mine','profile'].forEach(s=>{$('tab-'+s).hidden=s!==name;document.querySelector(`[data-tab="${s}"]`)?.classList.toggle('active',s===name)})}
 const priceFor=(svc,opt)=>{const p=Number(svc.base_price_centavos);return opt==='full_discount'?Math.round(p*.9):opt==='after_service_plus_10'?Math.round(p*1.1):p};
 const initialFor=(svc,opt)=>opt==='after_service_plus_10'?0:opt==='deposit_25'?Math.round(Number(svc.base_price_centavos)*.25):priceFor(svc,opt);
@@ -14,7 +22,7 @@ $('public-services').innerHTML=html;$('book-services').innerHTML=html;
 }
 async function updateAvailability(){const v=document.querySelector('#new-booking input[name="event_date"]').value;
 if(!v)return;const r=await R.rpc('unavailable_booking_dates',{p_start:v,p_end:v});const blocked=(r||[]).some(x=>x.event_date===v);$('date-status').textContent=blocked?'This date is already booked or blocked. Select another day.':'This date is currently available for a request. Final approval reserves the date.';$('date-status').dataset.blocked=blocked?'1':'0';}
-function chooseService(id){const svc=services.find(s=>s.id===id);if(!svc)return;const panel=$('new-booking');panel.hidden=false;const f=$('new-booking-form');f.querySelectorAll('input,select,button').forEach(x=>x.disabled=false);creatingBooking=false;$('booking-submit-status').textContent='';$('chosen-title').textContent='Request: '+svc.name;
+function chooseService(id){const svc=services.find(s=>s.id===id);if(!svc)return;const panel=$('new-booking');panel.hidden=false;const f=$('new-booking-form');f.querySelectorAll('input,select,button').forEach(x=>x.disabled=false);creatingBooking=false;delete f.dataset.submitted;$('booking-submit-status').textContent='';$('chosen-title').textContent='Request: '+svc.name;
 const form=$('new-booking-form');form.elements.service_id.value=svc.id;
 const allowed=options.filter(o=>o.service_id===svc.id).map(o=>o.option_code);
 $('booking-option').innerHTML=allowed.map(o=>`<option value="${o}">${R.esc(optLabel(o))}</option>`).join('');
@@ -51,7 +59,7 @@ async function loadBookings(prefer){if(!user)return;myBookings=R.check(await db.
 $('my-bookings').innerHTML=myBookings.length?myBookings.map(b=>`<div class="roma-booking ${b.id===selected?'selected':''}"><button data-booking="${b.id}"><strong>${R.esc(b.reference_number)}</strong><br>${R.esc(b.service_name_snapshot)}<br>${R.datePH(b.event_date)}<br><span class="roma-pill">${R.esc(b.status.replaceAll('_',' '))}</span></button></div>`).join(''):'<div class="roma-empty">No bookings yet. Select a service to begin.</div>';
 const id=prefer||selected;if(id&&myBookings.some(b=>b.id===id))await displayBooking(id);else $('my-booking-details').innerHTML='<p>Select a booking to see its information and next required action.</p>';
 }
-async function uploadPrivate(file,bucket,path){const ext=file.name.split('.').pop().toLowerCase();if(!['jpg','jpeg','png','webp','pdf'].includes(ext))throw Error('Choose a JPG, PNG, WebP, or PDF file.');if(file.size>10*1024*1024)throw Error('Maximum file size is 10 MB.');R.check(await db.storage.from(bucket).upload(path,file,{upsert:false,contentType:file.type}));}
+async function uploadPrivate(file,bucket,path){const ext=file.name.split('.').pop().toLowerCase();if(!['jpg','jpeg','png','webp','pdf'].includes(ext))throw Error('Choose a JPG, PNG, WebP, or PDF file.');if(file.size>10*1024*1024)throw Error('Maximum file size is 10 MB.');const optimized=file.type==='application/pdf'?file:await R.preparePrivateImage(file,'identity');R.check(await db.storage.from(bucket).upload(path,optimized,{upsert:false,contentType:optimized.type}));}
 async function uploadIds(form){const b=myBookings.find(b=>b.id===selected);if(!b)throw Error('Select a booking first.');const rows=R.check(await db.from('customer_identity_documents').select('document_slot').eq('booking_id',b.id));const existing=rows.map(x=>x.document_slot);
 for(const slot of [1,2]){if(existing.includes(slot))continue;const input=form.querySelector(`[name="id_${slot}"]`);const file=input?.files?.[0];if(!file)throw Error('Choose both government ID files.');const path=`${user.id}/${b.id}/id-${slot}-${crypto.randomUUID()}.${file.name.split('.').pop().toLowerCase()}`;await uploadPrivate(file,'roma-customer-ids',path);R.check(await db.from('customer_identity_documents').insert({booking_id:b.id,user_id:user.id,document_slot:slot,storage_path:path}));}
 R.notify('Two ID documents saved to private storage.','success');await loadBookings(b.id);}
@@ -88,7 +96,7 @@ $('new-booking-form').addEventListener('submit',safe(async e=>{
   $('booking-submit-status').textContent='Submitting your request…';
   try{
     const id=await R.rpc('start_booking',{p_service:f.elements.service_id.value,p_option:f.elements.option_code.value,p_day:f.elements.event_date.value});
-    committed=true;f.querySelectorAll('input,select,button').forEach(el=>el.disabled=true);
+    committed=true;f.dataset.submitted='1';f.querySelectorAll('input,select,button').forEach(el=>el.disabled=true);
     $('booking-submit-status').textContent='Request submitted successfully. Continue your booking below.';
     $('new-booking').hidden=true;selected=id;await loadBookings(id);
     showTab('profile');const prof=$('profile-form');if(prof.elements.full_name.value.trim()&&prof.elements.phone.value.trim())showTab('mine');
@@ -98,7 +106,7 @@ $('new-booking-form').addEventListener('submit',safe(async e=>{
 $('my-booking-details').addEventListener('change',safe(async e=>{if(e.target.name==='duration_unit'){const input=e.target.form.elements.duration;input.max=e.target.value==='days'?'365':e.target.value==='hours'?'8760':'525600';}if(e.target.id==='pay-method'){const b=myBookings.find(x=>x.id===selected);await paymentDetails(b,e.target.value)}}));
 $('my-booking-details').addEventListener('submit',safe(async e=>{const form=e.target;const b=myBookings.find(x=>x.id===selected);if(!b)return;
 if(form.id==='ids-form') await uploadIds(form);
-if(form.id==='payment-form'){const file=form.elements.proof.files[0];const driveId=await R.uploadToDrive(file,'payment_proof',b.id);const path='gdrive/'+driveId;await R.rpc('submit_booking_payment',{p_booking:b.id,p_method:form.elements.method.value,p_amount:Math.round(Number(form.elements.amount.value)*100),p_transaction_reference:form.elements.reference.value.trim(),p_bank_wallet:form.elements.bank.value.trim(),p_proof_path:path});R.notify('Payment proof submitted. An administrator will verify it.','success');await loadBookings(b.id)}
+if(form.id==='payment-form'){const file=form.elements.proof.files[0];const proof=await R.preparePrivateImage(file,'proof');const driveId=await R.uploadToDrive(proof,'payment_proof',b.id,message=>{const submit=form.querySelector('button[type=submit]');if(submit)submit.textContent=message;});const path='gdrive/'+driveId;await R.rpc('submit_booking_payment',{p_booking:b.id,p_method:form.elements.method.value,p_amount:Math.round(Number(form.elements.amount.value)*100),p_transaction_reference:form.elements.reference.value.trim(),p_bank_wallet:form.elements.bank.value.trim(),p_proof_path:path});R.notify('Payment proof submitted. An administrator will verify it.','success');await loadBookings(b.id)}
 if(form.id==='event-form'){await R.rpc('submit_event_details',{p_booking:b.id,p_name:form.elements.name.value.trim(),p_location:form.elements.location.value.trim(),p_start:form.elements.start.value,p_duration:R.durationMinutes(form.elements.duration.value,form.elements.duration_unit.value),p_notes:form.elements.notes.value.trim()});R.notify('Event request submitted for review.','success');await loadBookings(b.id)}
 if(form.id==='message-form'){R.check(await db.from('booking_messages').insert({booking_id:b.id,sender_id:user.id,message:form.elements.message.value.trim(),is_internal:false}));R.notify('Message sent.','success');await displayBooking(b.id)}
 }));

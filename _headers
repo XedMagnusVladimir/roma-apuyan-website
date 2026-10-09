@@ -1,0 +1,11 @@
+/
+  Cache-Control: no-cache, must-revalidate
+
+/*.html
+  Cache-Control: no-cache, must-revalidate
+
+/assets/js/*
+  Cache-Control: no-cache, must-revalidate
+
+/assets/css/*
+  Cache-Control: no-cache, must-revalidate
