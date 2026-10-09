@@ -3,6 +3,7 @@
 const R=window.Roma, db=R.client, $=R.qs;
 let customerRows=[], customerTotal=0, customerOffset=0, customerSearchTimer=null, customersRequest=0;
 let activeAdminTab='requests';
+let pageContentRows=[];
 const CUSTOMERS_PAGE_SIZE=50;
 let user, bookings=[],selectedBooking=null,services=[],methods=[],options=[],serviceMethodLinks=[], blocked=[],imageRows=[],calendar=null;
 const imageSlots=[['hero_primary','Homepage — main photo','hero'],['hero_secondary','Homepage — second photo','hero'], ...Array.from({length:6},(_,i)=>[`gallery_${i+1}`,`Gallery — photo ${i+1}`,'gallery']),['service_portraits','Service card — portraits','website'],['service_events','Service card — events','website'],['service_films','Service card — films','website'],['service_editorial','Service card — editorial','website']];
@@ -14,14 +15,14 @@ function tab(which){
     b.classList.toggle('active',current);
     b.setAttribute('aria-selected',String(current));
   });
-  for(const n of ['requests','services','payments','calendar','images','customers']){
+  for(const n of ['requests','services','payments','calendar','images','customers','customizer']){
     const panel=$('admin-'+n);
     if(panel)panel.hidden=n!==which;
   }
 }
 async function initialData(){
   // A failing secondary query must never block access to customers or other sections.
-  const jobs=[['services',loadServices],['payment methods',loadMethods],['bookings',loadBookings],['blocked dates',loadBlocked],['website images',loadImages]];
+  const jobs=[['services',loadServices],['payment methods',loadMethods],['bookings',loadBookings],['blocked dates',loadBlocked],['website images',loadImages],['page text settings',loadPageCustomizer]];
   const results=await Promise.allSettled(jobs.map(async ([name,run])=>{await run();return name;}));
   const failed=results.map((r,i)=>r.status==='rejected'?`${jobs[i][0]}: ${R.readable(r.reason)}`:null).filter(Boolean);
   if(failed.length)R.notify('Some dashboard sections could not load: '+failed.join(' | '),'error');
@@ -172,8 +173,8 @@ $('services-admin-list').innerHTML=services.length?services.map(s=>`<article cla
 renderMethodChecks();}
 function renderMethodChecks(){const selected=document.querySelector('#service-form input[name="id"]').value;
 $('service-methods').innerHTML=methods.length?methods.map(m=>`<label><input name="method_options" type="checkbox" value="${m.id}" ${selected&&serviceMethodLinks.some(x=>x.service_id===selected&&x.method_id===m.id)?'checked':''}> ${R.esc(m.name)}${m.is_active?'':' (inactive)'}</label>`).join(''):'<p class="roma-muted">Create a payment method under Payment methods to assign it here.</p>';}
-function serviceReset(){const f=$('service-form');f.reset();f.elements.id.value='';f.elements.is_active.checked=true;f.querySelectorAll('[name="options"]').forEach(x=>x.checked=true);$('service-image-state').textContent='';renderMethodChecks();}
-function editService(id){const s=services.find(x=>x.id===id);if(!s)return;const f=$('service-form');f.elements.id.value=s.id;f.elements.name.value=s.name;f.elements.description.value=s.description;f.elements.price.value=(s.base_price_centavos/100).toFixed(2);f.elements.duration_unit.value=s.duration_minutes%1440===0?'days':s.duration_minutes%60===0?'hours':'minutes';f.elements.duration.value=f.elements.duration_unit.value==='days'?s.duration_minutes/1440:f.elements.duration_unit.value==='hours'?s.duration_minutes/60:s.duration_minutes;f.elements.duration.max=f.elements.duration_unit.value==='days'?'365':f.elements.duration_unit.value==='hours'?'8760':'525600';f.elements.inclusions.value=(s.inclusions||[]).join('\n');f.elements.image.value=s.banner_drive_file_id||'';$('service-image-state').textContent=s.banner_drive_file_id?'Existing banner attached. Select a new image to replace it.':'No banner uploaded.';f.elements.is_active.checked=s.is_active;f.querySelectorAll('[name="options"]').forEach(x=>x.checked=options.some(o=>o.service_id===s.id&&o.option_code===x.value));renderMethodChecks();tab('services');f.scrollIntoView({behavior:'smooth'});}
+function serviceReset(){const f=$('service-form');f.reset();f.elements.id.value='';f.elements.is_active.checked=true;f.querySelectorAll('[name="options"]').forEach(x=>x.checked=true);$('service-image-state').textContent='';setMediaPreview('service-image-preview','', 'No existing banner');renderMethodChecks();}
+function editService(id){const s=services.find(x=>x.id===id);if(!s)return;const f=$('service-form');f.elements.image_file.value='';f.elements.id.value=s.id;f.elements.name.value=s.name;f.elements.description.value=s.description;f.elements.price.value=(s.base_price_centavos/100).toFixed(2);f.elements.duration_unit.value=s.duration_minutes%1440===0?'days':s.duration_minutes%60===0?'hours':'minutes';f.elements.duration.value=f.elements.duration_unit.value==='days'?s.duration_minutes/1440:f.elements.duration_unit.value==='hours'?s.duration_minutes/60:s.duration_minutes;f.elements.duration.max=f.elements.duration_unit.value==='days'?'365':f.elements.duration_unit.value==='hours'?'8760':'525600';f.elements.inclusions.value=(s.inclusions||[]).join('\n');f.elements.image.value=s.banner_drive_file_id||'';$('service-image-state').textContent=s.banner_drive_file_id?'This is the existing banner. Choose a file to replace it.':'No banner uploaded.';setMediaPreview('service-image-preview',s.banner_drive_file_id,'No existing banner');f.elements.is_active.checked=s.is_active;f.querySelectorAll('[name="options"]').forEach(x=>x.checked=options.some(o=>o.service_id===s.id&&o.option_code===x.value));renderMethodChecks();tab('services');f.scrollIntoView({behavior:'smooth'});}
 async function saveService(e){
  const f=e.currentTarget;
  const chosenMethods=Array.from(f.querySelectorAll('input[name="method_options"]:checked')).map(x=>x.value);
@@ -184,7 +185,7 @@ async function saveService(e){
  if(!chosenOptions.length)throw Error('Select at least one payment arrangement for this package.');
  if(!Number.isFinite(Number(f.elements.price.value)) || Number(f.elements.price.value)<=0)throw Error('Enter a valid package price.');
  const file=f.elements.image_file.files[0];let image=String(f.elements.image.value||'').trim();
- if(file){$('service-image-state').textContent='Uploading banner to Google Drive…';image=await R.uploadToDrive(file,'service_banner');}
+ if(file){$('service-image-state').textContent='Uploading banner to Google Drive…';image=await R.uploadToDrive(await R.preparePublicImage(file,'banner'),'service_banner');}
  const data=await R.rpc('roma_admin_save_package',{
   p_id:f.elements.id.value||null,p_name:f.elements.name.value.trim(),p_description:f.elements.description.value.trim(),
   p_base_price_centavos:Math.round(Number(f.elements.price.value)*100),
@@ -196,6 +197,33 @@ async function saveService(e){
  if(!data)throw Error('Package could not be saved.');
  R.notify('Service package saved with valid payment arrangements.','success');await loadServices();serviceReset();
 }
+function setMediaPreview(id,driveFileId,emptyText,fallbackUrl=''){
+ const host=$(id);if(!host)return;
+ const src=driveFileId?R.image(driveFileId):fallbackUrl;
+ host.innerHTML=src?`<img src="${R.esc(src)}" alt="Current image preview" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="roma-preview-empty" hidden>Image could not load</span>`:`<span class="roma-preview-empty">${R.esc(emptyText||'No current image')}</span>`;
+}
+async function loadPageCustomizer(){
+ const result=await db.from('roma_page_content').select('key,text_value,url_value');
+ if(result.error)throw result.error;
+ pageContentRows=result.data||[];
+ const defs=window.RomaPageContent?.fields||[];
+ const sections=[...new Set(defs.map(x=>x.section))];
+ $('page-customizer-fields').innerHTML=sections.map(section=>`<section class="roma-card roma-cms-section"><h3>${R.esc(section)}</h3><div class="roma-cms-grid">${defs.filter(x=>x.section===section).map(f=>{
+ const row=pageContentRows.find(x=>x.key===f.key);
+ return `<form data-content-key="${R.esc(f.key)}" class="roma-cms-field"><label class="roma-field">${R.esc(f.label)}<textarea name="text" rows="2" maxlength="1000" required>${R.esc(row?.text_value??f.text)}</textarea></label>${f.isLink?`<label class="roma-field">Button URL<input type="text" name="url" value="${R.esc(row?.url_value??f.url??'')}" placeholder="https://example.com or #services"></label>`:''}<div class="roma-cms-actions"><button class="roma-btn tiny" type="submit">Save text${f.isLink?' & URL':''}</button></div></form>`;
+ }).join('')}</div></section>`).join('');
+ $('page-customizer-status').textContent=`${defs.length} editable text items loaded. Saved changes appear on the homepage after refresh.`;
+}
+async function savePageContent(event){
+ const f=event.target,key=f.dataset.contentKey;
+ const def=(window.RomaPageContent?.fields||[]).find(x=>x.key===key);
+ if(!def)throw Error('Unknown page content field.');
+ const txt=f.elements.text.value.trim();if(!txt)throw Error('Text cannot be empty.');
+ const url=def.isLink?f.elements.url.value.trim():'';
+ if(def.isLink&&!window.RomaPageContent.allowedUrl(url))throw Error('Use an https:// URL, /path, #section, mailto: or tel: link.');
+ await R.rpc('roma_admin_save_page_content',{p_key:key,p_text:txt,p_url:url});
+ R.notify('Saved. The public website will use your updated text and button URL.','success');
+}
 function renderPaymentMethod(m){
  const name=R.esc(m.name||'Payment method');
  const provider=R.esc(m.provider||'Bank or e-wallet');
@@ -205,7 +233,7 @@ function renderPaymentMethod(m){
  const methodId=R.esc(m.id);
  const status=m.is_active?'Active':'Inactive';
  return `<article class="roma-payment-card" aria-label="${name}">
-   <div class="roma-payment-head"><div class="roma-payment-monogram" aria-hidden="true">${initials}</div>
+   <div class="roma-payment-head"><div class="roma-payment-monogram" aria-hidden="true">${m.icon_drive_file_id?`<img class="roma-method-icon" src="${R.image(m.icon_drive_file_id)}" alt="">`:initials}</div>
      <div class="roma-payment-meta"><h3 class="roma-payment-name">${name}</h3><p class="roma-payment-provider">${provider}</p></div>
      <span class="roma-payment-status ${m.is_active?'is-active':''}">${status}</span></div>
    <dl class="roma-payment-details"><div><dt>Account holder</dt><dd>${holder}</dd></div>
@@ -230,13 +258,13 @@ function updatePackagePrerequisite(){
  if(notice){notice.textContent=valid?'Payment method available. Select at least one active method below.':'Create an active payment method with account holder and account details before making packages.';notice.className=valid?'roma-note roma-success-note':'roma-note roma-warning-note';}
  if(form?.elements){form.querySelector('button[type="submit"]').disabled=!valid;}
 }
-function methodReset(){const f=$('method-form');f.reset();f.elements.id.value='';f.elements.is_active.checked=true;$('method-qr-state').textContent='';}
-function editMethod(id){const m=methods.find(x=>x.id===id);if(!m)return;const f=$('method-form');f.elements.id.value=m.id;f.elements.name.value=m.name;f.elements.provider.value=m.provider;f.elements.holder.value=m.account_holder;f.elements.details.value=m.account_details;f.elements.instructions.value=m.instructions;f.elements.qr.value=m.qr_drive_file_id||'';$('method-qr-state').textContent=m.qr_drive_file_id?'QR image attached; upload another to replace it.':'No QR image attached.';f.elements.is_active.checked=m.is_active;tab('payments');f.scrollIntoView({behavior:'smooth'});}
-async function saveMethod(e){const f=e.currentTarget;const file=f.elements.qr_file.files[0];let parsed=String(f.elements.qr.value||'').trim();if(file){$('method-qr-state').textContent='Uploading QR image to Google Drive…';parsed=await R.uploadToDrive(file,'payment_qr');$('method-qr-state').textContent='QR image uploaded.';}if(!f.elements.name.value.trim()||!f.elements.holder.value.trim()||!f.elements.details.value.trim())throw Error('Payment method name, account holder, and account details are required.');const data={name:f.elements.name.value.trim(),provider:f.elements.provider.value.trim(),account_holder:f.elements.holder.value.trim(),account_details:f.elements.details.value.trim(),instructions:f.elements.instructions.value.trim(),qr_drive_file_id:parsed||null,is_active:f.elements.is_active.checked};const id=f.elements.id.value;
+function methodReset(){const f=$('method-form');f.reset();f.elements.id.value='';f.elements.is_active.checked=true;$('method-qr-state').textContent='';setMediaPreview('method-icon-preview','','No payment icon uploaded');setMediaPreview('method-qr-preview','','No QR image uploaded');}
+function editMethod(id){const m=methods.find(x=>x.id===id);if(!m)return;const f=$('method-form');f.elements.icon_file.value='';f.elements.qr_file.value='';f.elements.id.value=m.id;f.elements.name.value=m.name;f.elements.provider.value=m.provider;f.elements.holder.value=m.account_holder;f.elements.details.value=m.account_details;f.elements.instructions.value=m.instructions;f.elements.qr.value=m.qr_drive_file_id||'';f.elements.icon.value=m.icon_drive_file_id||'';setMediaPreview('method-icon-preview',m.icon_drive_file_id,'No payment icon uploaded');setMediaPreview('method-qr-preview',m.qr_drive_file_id,'No QR image uploaded');$('method-qr-state').textContent=m.qr_drive_file_id?'QR image attached; upload another to replace it.':'No QR image attached.';f.elements.is_active.checked=m.is_active;tab('payments');f.scrollIntoView({behavior:'smooth'});}
+async function saveMethod(e){const f=e.currentTarget;const file=f.elements.qr_file.files[0];let parsed=String(f.elements.qr.value||'').trim();if(file){$('method-qr-state').textContent='Uploading QR image to Google Drive…';parsed=await R.uploadToDrive(await R.preparePublicImage(file,'icon'),'payment_qr');$('method-qr-state').textContent='QR image uploaded.';}if(!f.elements.name.value.trim()||!f.elements.holder.value.trim()||!f.elements.details.value.trim())throw Error('Payment method name, account holder, and account details are required.');let iconId=String(f.elements.icon.value||'').trim();const iconFile=f.elements.icon_file.files[0];if(iconFile){iconId=await R.uploadToDrive(await R.preparePublicImage(iconFile,'icon'),'payment_icon');}const data={icon_drive_file_id:iconId||null,name:f.elements.name.value.trim(),provider:f.elements.provider.value.trim(),account_holder:f.elements.holder.value.trim(),account_details:f.elements.details.value.trim(),instructions:f.elements.instructions.value.trim(),qr_drive_file_id:parsed||null,is_active:f.elements.is_active.checked};const id=f.elements.id.value;
 if(id)R.check(await db.from('payment_methods').update(data).eq('id',id));else R.check(await db.from('payment_methods').insert(data));R.notify('Payment method saved.','success');await loadMethods();methodReset();}
 async function loadBlocked(){blocked=R.check(await db.from('blocked_dates').select('*').order('event_date'));$('blocked-list').innerHTML=blocked.length?blocked.map(d=>`<div class="roma-booking">${R.datePH(d.event_date)} — ${R.esc(d.reason)} <button class="roma-btn secondary tiny" data-unblock="${d.event_date}">Unblock</button></div>`).join(''):'<p class="roma-muted">No manually blocked dates.</p>';}
-async function loadImages(){imageRows=R.check(await db.from('site_images').select('*'));$('image-positions').innerHTML=imageSlots.map(([slot,label])=>{const row=imageRows.find(x=>x.slot_key===slot);return `<div class="roma-card"><h3>${R.esc(label)}</h3>${row?.drive_file_id?`<img class="roma-banner" src="${R.image(row.drive_file_id)}" alt="${R.esc(label)}">`:''}<form data-image-form="${slot}"><label class="roma-field">Upload image to Google Drive<input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"></label><input name="image" type="hidden" value="${R.esc(row?.drive_file_id||'')}"><label class="roma-field">Image title<input name="title" maxlength="140" value="${R.esc(row?.title||label)}"></label><label class="roma-field"><span><input name="active" type="checkbox" ${row?.is_active!==false?'checked':''}> Display this image</span></label><button class="roma-btn" type="submit">Save image</button></form></div>`}).join('');}
-async function saveImage(e){const f=e.target;const slot=f.dataset.imageForm;const lookup=imageSlots.find(x=>x[0]===slot);if(!lookup)throw Error('Invalid image slot.');const file=f.elements.image_file.files[0];const id=file?await R.uploadToDrive(file,'site_image'):f.elements.image.value.trim();const existing=imageRows.find(x=>x.slot_key===slot);if(!id){if(existing)R.check(await db.from('site_images').delete().eq('id',existing.id));}else{const data={slot_key:slot,placement:lookup[2],title:f.elements.title.value.trim()||lookup[1],drive_file_id:id,is_active:f.elements.active.checked};if(existing)R.check(await db.from('site_images').update(data).eq('id',existing.id));else R.check(await db.from('site_images').insert(data));}
+async function loadImages(){imageRows=R.check(await db.from('site_images').select('*'));$('image-positions').innerHTML=imageSlots.map(([slot,label])=>{const row=imageRows.find(x=>x.slot_key===slot);return `<div class="roma-card"><h3>${R.esc(label)}</h3><div class="roma-preview-box roma-preview-current">${row?.drive_file_id?`<img src="${R.image(row.drive_file_id)}" alt="Current ${R.esc(label)}" loading="lazy">`:window.RomaImageFallbacks?.[slot]?`<img src="${R.esc(window.RomaImageFallbacks[slot])}" alt="Current default ${R.esc(label)}" loading="lazy">`:'<span class="roma-preview-empty">No image assigned</span>'}</div><p class="roma-muted roma-preview-caption">Current image shown above</p><form data-image-form="${slot}"><label class="roma-field">Upload image to Google Drive<input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"></label><input name="image" type="hidden" value="${R.esc(row?.drive_file_id||'')}"><label class="roma-field">Image title<input name="title" maxlength="140" value="${R.esc(row?.title||label)}"></label><label class="roma-field"><span><input name="active" type="checkbox" ${row?.is_active!==false?'checked':''}> Display this image</span></label><button class="roma-btn" type="submit">Save image</button></form></div>`}).join('');}
+async function saveImage(e){const f=e.target;const slot=f.dataset.imageForm;const lookup=imageSlots.find(x=>x[0]===slot);if(!lookup)throw Error('Invalid image slot.');const file=f.elements.image_file.files[0];const id=file?await R.uploadToDrive(await R.preparePublicImage(file,'website'),'site_image'):f.elements.image.value.trim();const existing=imageRows.find(x=>x.slot_key===slot);if(!id){if(existing)R.check(await db.from('site_images').delete().eq('id',existing.id));}else{const data={slot_key:slot,placement:lookup[2],title:f.elements.title.value.trim()||lookup[1],drive_file_id:id,is_active:f.elements.active.checked};if(existing)R.check(await db.from('site_images').update(data).eq('id',existing.id));else R.check(await db.from('site_images').insert(data));}
 R.notify('Image saved. Your public website will use this Google Drive image.','success');await loadImages();}
 $('admin-login').addEventListener('submit',safe(async e=>{const f=e.currentTarget;R.check(await db.auth.signInWithPassword({email:f.elements.email.value.trim(),password:f.elements.password.value}));await initialize();}));
 $('admin-logout').addEventListener('click',safe(async()=>{R.check(await db.auth.signOut());user=null;selectedBooking=null;await initialize();}));
@@ -259,7 +287,7 @@ $('reload-bookings').addEventListener('click',safe(loadBookings));
 $('service-form').elements.duration_unit.addEventListener('change',e=>{$('service-form').elements.duration.max=e.target.value==='days'?'365':e.target.value==='hours'?'8760':'525600';});$('service-form').addEventListener('submit',safe(saveService));$('service-reset').addEventListener('click',serviceReset);
 $('method-form').addEventListener('submit',safe(saveMethod));$('method-reset').addEventListener('click',methodReset);
 $('block-form').addEventListener('submit',safe(async e=>{const f=e.currentTarget;R.check(await db.from('blocked_dates').insert({event_date:f.elements.event_date.value,reason:f.elements.reason.value.trim(),created_by:user.id}));R.notify('Date blocked.','success');f.reset();await loadBlocked();if(calendar)calendar.refresh();}));
-document.addEventListener('submit',safe(async e=>{const f=e.target;if(f.dataset.imageForm)await saveImage(e);
+document.addEventListener('submit',safe(async e=>{const f=e.target;if(f.dataset.imageForm)await saveImage(e);if(f.dataset.contentKey)await savePageContent(e);
 if(f.id==='offline-payment'){const b=bookings.find(b=>b.id===selectedBooking);await R.rpc('admin_record_offline_payment',{p_booking:b.id,p_amount:Math.round(Number(f.elements.amount.value)*100),p_reference:f.elements.reference.value.trim()});R.notify('Payment recorded.','success');await loadBookings();}
 if(f.id==='admin-message'){R.check(await db.from('booking_messages').insert({booking_id:selectedBooking,sender_id:user.id,message:f.elements.message.value.trim(),is_internal:f.elements.internal.checked}));R.notify('Message saved.','success');await showBooking(selectedBooking);}
 }));

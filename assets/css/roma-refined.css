@@ -150,3 +150,18 @@ body:not(.roma-app) .nav-links a[href='booking.html'] {color:#f2bdd0;}
  .roma-download-card{padding:28px;}.roma-2cols{grid-template-columns:1fr;}}
 /* Keep a single payment method centered and substantial, rather than a tiny grid tile. */
 .roma-payment-methods:has(> .roma-payment-card:only-child){grid-template-columns:minmax(0,min(100%,610px));justify-content:center;}
+
+/* STAGE 15: standardized photo/card previews and inline page customizer */
+.roma-banner {display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;object-position:center;border-radius:14px;background:#20151d}
+.service-drive-image {width:100%;aspect-ratio:16/9;object-fit:cover;object-position:center;border-radius:12px}
+.roma-preview-box{display:flex;align-items:center;justify-content:center;min-height:125px;width:100%;margin:11px 0;padding:8px;border:1px solid rgba(230,178,203,.24);border-radius:14px;background:#120d13;overflow:hidden}
+.roma-preview-box img{display:block;width:100%;height:auto;max-height:290px;aspect-ratio:16/9;object-fit:cover;border-radius:9px}
+.roma-preview-icon{max-width:150px;min-height:145px}.roma-preview-icon img{width:128px;height:128px;aspect-ratio:1;object-fit:contain}
+.roma-preview-qr{max-width:200px;min-height:145px}.roma-preview-qr img{width:160px;height:160px;aspect-ratio:1;object-fit:contain}
+.roma-preview-current{min-height:165px}.roma-preview-current img{aspect-ratio:16/10;max-height:220px}
+.roma-preview-empty{color:#bb9bad;text-align:center;font-size:13px}.roma-preview-caption{font-size:12px;margin-bottom:14px}
+.roma-payment-monogram{overflow:hidden;display:flex;align-items:center;justify-content:center}.roma-method-icon{width:100%;height:100%;object-fit:contain;border-radius:12px;display:block}
+.roma-customizer-sections{display:grid;gap:22px}.roma-cms-section{padding:clamp(16px,3vw,26px)}.roma-cms-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}.roma-cms-field{padding:15px;border-radius:12px;border:1px solid rgba(222,178,199,.14);background:#151018}.roma-cms-actions{display:flex;justify-content:flex-end}.roma-cms-field textarea{min-height:75px}
+@media(max-width:700px){.roma-cms-grid{grid-template-columns:1fr}}
+
+.roma-customer-method-icon{float:left;width:58px;height:58px;aspect-ratio:1;object-fit:contain;border-radius:12px;margin:0 14px 12px 0;background:#261823;padding:5px}

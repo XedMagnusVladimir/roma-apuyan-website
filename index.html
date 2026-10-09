@@ -531,6 +531,8 @@
         toastTimeout=setTimeout(()=>toast.classList.remove('show'),3000);
       };
       document.getElementById('share-btn').addEventListener('click',async () => {
+        const configured=document.getElementById('share-btn').dataset.customHref;
+        if(configured){window.location.assign(configured);return;}
         const url='https://creationsbyromaapuyan.studio/';
         if(navigator.share){
           try{await navigator.share({title:'Creations by Roma Apuyan',text:'A photography and videography studio coming soon.',url});return}
@@ -543,6 +545,7 @@
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script defer src="assets/js/roma-common.js"></script>
+  <script defer src="assets/js/roma-page-content.js?v=20261009-15"></script>
   <script defer src="assets/js/drive-images.js?v=8"></script>
   <script defer src="assets/js/roma-home.js?v=8"></script>
   <script>

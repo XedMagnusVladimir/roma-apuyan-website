@@ -11,6 +11,25 @@ window.Roma = (() => {
   const driveId = v => {const s=String(v||'').trim();const m=s.match(/\/file\/d\/([A-Za-z0-9_-]+)/)||s.match(/[?&]id=([A-Za-z0-9_-]+)/);const id=m?m[1]:s;return /^[A-Za-z0-9_-]{15,}$/.test(id)?id:''};
   const image = id => id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveId(id))}&sz=w1200` : '';
   const sizeAllowed=5*1024*1024;
+
+  async function preparePublicImage(file,kind='banner'){
+    if(!file)return null;
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('Upload a JPG, PNG, or WebP photograph.');
+    if(file.size>30*1024*1024)throw Error('The original image must be under 30 MB.');
+    const sizes={banner:[1280,720],icon:[256,256],website:[1600,1000]};
+    const [width,height]=sizes[kind]||sizes.website;
+    const bitmap=await createImageBitmap(file);
+    try{
+      const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+      const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing is not available.');
+      ctx.fillStyle=kind==='icon'?'#20161e':'#161016';ctx.fillRect(0,0,width,height);
+      const scale=kind==='icon'?Math.min(width/bitmap.width,height/bitmap.height):Math.max(width/bitmap.width,height/bitmap.height);
+      const dw=bitmap.width*scale,dh=bitmap.height*scale;
+      ctx.drawImage(bitmap,(width-dw)/2,(height-dh)/2,dw,dh);
+      const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('Unable to resize image.')),'image/jpeg',0.86));
+      return new File([blob],String(file.name||'image').replace(/\.[^.]*$/,'')+'-'+kind+'.jpg',{type:'image/jpeg'});
+    }finally{bitmap.close();}
+  }
   async function uploadToDrive(file,scope,bookingId){
     if(!file) return null;
     if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(file.type)) throw Error('Choose a JPG, PNG, WebP or PDF file.');
@@ -52,5 +71,5 @@ window.Roma = (() => {
   const rpc=async(name,args)=>check(await client.rpc(name,args));
   const query=async(p)=>check(await p);
   const qs=(id)=>document.getElementById(id);
-  return {client,money,esc,driveId,image,datePH,optionText,readable,check,notify,clear,loggedIn,isAdmin,rpc,query,qs,uploadToDrive,viewDriveProof,readableDuration,durationMinutes};
+  return {client,money,esc,driveId,image,preparePublicImage,datePH,optionText,readable,check,notify,clear,loggedIn,isAdmin,rpc,query,qs,uploadToDrive,viewDriveProof,readableDuration,durationMinutes};
 })();
