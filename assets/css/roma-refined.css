@@ -214,3 +214,133 @@ body:not(.roma-app) .nav-links a[href='booking.html'] {color:#f2bdd0;}
 .roma-bulk-panel .roma-btn{min-width:185px;flex-shrink:0;}
 .roma-bulk-panel .roma-btn:disabled{opacity:.6;cursor:wait;}
 @media(max-width:640px){.roma-bulk-panel{align-items:stretch;padding:18px 14px}.roma-bulk-panel .roma-btn{width:100%;}}
+
+
+/* Stage 19: premium layout polish, centered section headers, better cards, customizer for download page, premium scrollbars */
+html{scroll-behavior:smooth}
+html,body{overflow-x:hidden}
+body.roma-app{background:
+ radial-gradient(circle at 18% 18%,rgba(121,48,84,.12),transparent 23%),
+ radial-gradient(circle at 82% 8%,rgba(150,66,108,.14),transparent 28%),
+ linear-gradient(180deg,#0f0910 0%,#140c13 48%,#120a12 100%)}
+body.roma-app::-webkit-scrollbar,
+.roma-top-links::-webkit-scrollbar,
+.roma-table-wrap::-webkit-scrollbar,
+#admin-booking-list::-webkit-scrollbar,
+#services-admin-list::-webkit-scrollbar,
+#method-admin-list::-webkit-scrollbar,
+#blocked-list::-webkit-scrollbar,
+#image-positions::-webkit-scrollbar,
+#page-customizer-fields::-webkit-scrollbar,
+#customer-list::-webkit-scrollbar,
+#my-bookings::-webkit-scrollbar{width:12px;height:12px}
+body.roma-app::-webkit-scrollbar-track,
+.roma-top-links::-webkit-scrollbar-track,
+.roma-table-wrap::-webkit-scrollbar-track,
+#admin-booking-list::-webkit-scrollbar-track,
+#services-admin-list::-webkit-scrollbar-track,
+#method-admin-list::-webkit-scrollbar-track,
+#blocked-list::-webkit-scrollbar-track,
+#image-positions::-webkit-scrollbar-track,
+#page-customizer-fields::-webkit-scrollbar-track,
+#customer-list::-webkit-scrollbar-track,
+#my-bookings::-webkit-scrollbar-track{background:#140d14;border-radius:999px}
+body.roma-app::-webkit-scrollbar-thumb,
+.roma-top-links::-webkit-scrollbar-thumb,
+.roma-table-wrap::-webkit-scrollbar-thumb,
+#admin-booking-list::-webkit-scrollbar-thumb,
+#services-admin-list::-webkit-scrollbar-thumb,
+#method-admin-list::-webkit-scrollbar-thumb,
+#blocked-list::-webkit-scrollbar-thumb,
+#image-positions::-webkit-scrollbar-thumb,
+#page-customizer-fields::-webkit-scrollbar-thumb,
+#customer-list::-webkit-scrollbar-thumb,
+#my-bookings::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#6c4158,#f0bdd1);border:2px solid #140d14;border-radius:999px}
+body.roma-app, .roma-top-links, .roma-table-wrap, #admin-booking-list, #services-admin-list, #method-admin-list, #blocked-list, #image-positions, #page-customizer-fields, #my-bookings{scrollbar-width:thin;scrollbar-color:#d6a2b8 #140d14}
+.roma-wrap section[id^='admin-']{width:min(100%,1580px);margin-inline:auto}
+.roma-wrap section[id^='admin-'] > h2,
+.roma-wrap section[id^='admin-'] > p,
+.roma-wrap section[id^='admin-'] > .roma-lead,
+.roma-wrap section[id^='admin-'] > .roma-muted,
+.roma-wrap section[id^='admin-'] > .roma-note,
+.roma-wrap #client-view > h2,
+.roma-wrap #client-view > p,
+.roma-wrap #client-view > .roma-note,
+.roma-wrap #client-view > .roma-muted,
+.roma-wrap #client-view > .roma-alert,
+.roma-wrap #auth-view > h2,
+.roma-wrap #auth-view > p,
+.roma-wrap #auth-view > .roma-muted{text-align:center;margin-inline:auto}
+.roma-wrap section[id^='admin-'] > .roma-alert,
+.roma-wrap section[id^='admin-'] > .roma-note,
+.roma-wrap #client-view > .roma-alert,
+.roma-wrap #client-view > .roma-note{max-width:1360px}
+#admin-customizer > p,
+#admin-customizer > .roma-muted,
+#admin-customers > p,
+#admin-images > p,
+#admin-images > .roma-lead,
+#client-view > .roma-note{max-width:1150px}
+#admin-customers > .roma-flex:first-child,
+#admin-images > .roma-flex:first-child,
+#admin-customizer > .roma-flex:first-child{justify-content:center;align-items:center}
+#admin-customers #customer-search{margin-inline:auto}
+#admin-booking-list,#services-admin-list,#method-admin-list,#blocked-list,#my-bookings{max-height:70vh;overflow:auto;padding-right:6px}
+#admin-booking-list{padding-right:10px}
+.roma-table-wrap{max-height:72vh}
+#page-customizer-fields{max-height:75vh;overflow:auto;padding-right:8px}
+.roma-search, #customer-search{margin-inline:auto}
+.roma-card{backdrop-filter:blur(10px)}
+.roma-package-grid{gap:28px}
+.roma-package-tile{position:relative;display:flex;flex-direction:column;gap:14px;min-height:100%;padding:18px 18px 22px;border-radius:28px;background:
+ linear-gradient(180deg,rgba(46,27,42,.96),rgba(25,17,23,.98)),
+ radial-gradient(circle at top right,rgba(245,190,211,.14),transparent 30%);
+ border:1px solid rgba(245,194,214,.18);box-shadow:0 24px 56px rgba(0,0,0,.22);overflow:hidden}
+.roma-package-tile::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.02),transparent 36%);pointer-events:none}
+.roma-package-tile:hover{transform:translateY(-4px);box-shadow:0 30px 70px rgba(0,0,0,.28);border-color:rgba(245,194,214,.34)}
+.roma-package-tile .roma-banner{height:210px;border-radius:20px;box-shadow:0 16px 34px rgba(0,0,0,.26);margin-bottom:2px}
+.roma-package-tile h3{font:500 clamp(28px,2.2vw,34px)/1.02 var(--roma-serif);margin:6px 0 0;color:#fff4f7;text-wrap:balance}
+.roma-package-tile > p:nth-of-type(1){display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0;padding:10px 14px;border-radius:14px;background:rgba(245,191,210,.07);border:1px solid rgba(245,191,210,.14);font-size:13px;color:#f0d5df}
+.roma-package-tile > p:nth-of-type(2){margin:2px 0 0;color:#cbb4c0;font-size:14px}
+.roma-package-details{margin-top:6px;padding-top:14px;border-top:1px solid rgba(245,191,210,.12)}
+.roma-package-details strong{display:block;margin-bottom:10px;font-size:12px;letter-spacing:.11em;text-transform:uppercase;color:#ddb1c6}
+.roma-package-details ul{margin:0;padding-left:18px;color:#f6eaef}
+.roma-package-details li{margin:0 0 8px}
+.roma-tile-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:auto;padding-top:8px}
+.roma-tile-actions .roma-btn{width:100%;justify-content:center;min-height:46px;border-radius:14px}
+.roma-payment-methods{gap:28px;align-items:stretch}
+.roma-payment-card{position:relative;min-height:320px;padding:28px;border-radius:28px;background:
+ linear-gradient(180deg,rgba(39,24,36,.96),rgba(22,15,24,.98)),
+ radial-gradient(circle at 100% 0%,rgba(245,191,210,.14),transparent 30%);
+ border:1px solid rgba(246,191,211,.18);box-shadow:0 26px 56px rgba(0,0,0,.23);overflow:hidden}
+.roma-payment-card::before{content:'';position:absolute;top:-120px;right:-120px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(243,182,205,.14),transparent 60%);pointer-events:none}
+.roma-payment-head{align-items:flex-start;gap:16px}
+.roma-payment-monogram{flex:0 0 70px;width:70px;height:70px;border-radius:18px;background:linear-gradient(145deg,#fad5e3,#d593b3);box-shadow:0 12px 24px rgba(0,0,0,.24)}
+.roma-method-icon{padding:10px;background:rgba(17,12,18,.42)}
+.roma-payment-name{font-size:34px;line-height:1}
+.roma-payment-provider{font-size:13px;letter-spacing:.02em}
+.roma-payment-status{padding:8px 13px;font-size:11px}
+.roma-payment-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}
+.roma-payment-details div{padding:14px 15px;border:1px solid rgba(245,191,210,.12);border-radius:16px;background:rgba(255,255,255,.02)}
+.roma-payment-details dd{font-size:15px;line-height:1.55}
+.roma-payment-actions{gap:12px}
+.roma-payment-actions .roma-btn{min-height:48px;border-radius:15px}
+.roma-cms-section h3{text-align:center;font-size:34px;margin-bottom:18px}
+.roma-cms-grid{align-items:start}
+.roma-cms-field{background:linear-gradient(180deg,rgba(26,18,28,.92),rgba(18,13,21,.95));border-color:rgba(243,190,210,.16)}
+.roma-cms-field strong{display:block;margin-bottom:8px;font-size:14px;color:#f5dce5}
+.roma-cms-field small{display:block;color:#c8afbc;margin:0 0 10px}
+.roma-preview-box.roma-preview-current{min-height:180px}
+.roma-preview-box.roma-preview-current img{max-height:160px;max-width:100%;object-fit:cover}
+#admin-images #image-positions .roma-preview-box img{object-fit:cover!important;max-width:100%!important;width:100%!important;height:100%!important;max-height:none!important}
+.roma-download-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:28px}
+.roma-download-card{min-height:420px}
+.roma-download-card .roma-btn{margin-top:auto;align-self:flex-start}
+.roma-download-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:auto}
+.roma-download-actions .roma-btn{min-width:185px}
+.roma-footer .roma-footer-main,.roma-footer .roma-partner{text-align:center}
+.roma-app .roma-note,.roma-app .roma-alert{border-radius:16px}
+.roma-wrap > h1,#client-view > h2,#auth-view > h2{text-wrap:balance}
+.roma-hero-center,.roma-section-center{text-align:center;margin-inline:auto}
+@media(max-width:1024px){.roma-payment-details{grid-template-columns:1fr}.roma-wrap section[id^='admin-']{width:min(100%,100%)} }
+@media(max-width:760px){.roma-tile-actions{grid-template-columns:1fr}.roma-payment-card,.roma-package-tile{border-radius:24px}.roma-payment-name{font-size:30px}.roma-wrap > h1{font-size:50px}.roma-wrap section[id^='admin-'] > h2,.roma-wrap #client-view > h2,.roma-wrap #auth-view > h2{font-size:44px}}
