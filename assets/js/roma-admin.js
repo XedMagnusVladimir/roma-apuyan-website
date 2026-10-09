@@ -154,6 +154,31 @@ async function deleteCustomer(userId){
     if(button?.isConnected){button.disabled=false;button.textContent=oldText;}
   }
 }
+
+// Bulk actions use server-side, super_admin-only RPCs. No service-role key is sent to the browser.
+async function bulkDelete(kind){
+  const isBookings=kind==='bookings';
+  const phrase=isBookings?'DELETE ALL BOOKINGS':'DELETE ALL PACKAGES';
+  const rpcName=isBookings?'roma_admin_delete_all_bookings':'roma_admin_delete_all_packages';
+  const endpoint=isBookings?'admin-booking-details':'services-admin-list';
+  const estimated=isBookings?bookings.length:services.length;
+  const warning=isBookings
+    ?`This will permanently remove ALL bookings, payments, identity-document records, messages, and booking documents.\n\nAt least ${estimated} booking(s) are currently displayed.`
+    :`This will permanently remove ALL packages AND ALL related bookings, payments, identity-document records, and messages.\n\n${estimated} package(s) are currently displayed.`;
+  const confirmation=window.prompt(`${warning}\n\nType ${phrase} to confirm:`);
+  if(confirmation!==phrase)return;
+  const button=$(isBookings?'delete-all-bookings':'delete-all-packages');
+  if(button){button.disabled=true;button.textContent='Deleting…';}
+  try{
+    const result=await R.rpc(rpcName,{});
+    if(!result?.ok)throw Error(result?.error||'Server did not confirm deletion.');
+    selectedBooking=null;
+    if(isBookings){$('admin-booking-details').textContent='All bookings were deleted.';await loadBookings();}
+    else{$('admin-booking-details').textContent='Package and booking cleanup complete.';await Promise.all([loadBookings(),loadServices()]);}
+    if(calendar)await calendar.refresh();
+    R.notify(`Deleted ${result.bookings_deleted||0} booking(s) and ${result.packages_deleted||0} package(s).`,'success');
+  }finally{if(button){button.disabled=false;button.textContent=phrase==='DELETE ALL BOOKINGS'?'Delete All Bookings':'Delete All Packages';}}
+}
 async function loadBookings(){bookings=R.check(await db.from('bookings').select('*').order('created_at',{ascending:false}).limit(250));const summary=[['Recent bookings',bookings.length],['Awaiting approval',bookings.filter(b=>b.status==='pending_approval'&&b.event_name&&b.event_location).length],['Verified payments',R.money(bookings.reduce((sum,b)=>sum+Number(b.paid_centavos),0))],['Remaining balances',R.money(bookings.filter(b=>['approved','completed'].includes(b.status)).reduce((sum,b)=>sum+Number(b.total_centavos-b.paid_centavos),0))]];$('admin-summary').innerHTML=summary.map(([label,value])=>`<div class="roma-card"><span class="roma-muted">${label} (shown records)</span><h3>${value}</h3></div>`).join('');
 $('admin-booking-list').innerHTML=bookings.length?bookings.map(b=>`<div class="roma-booking"><button data-select-booking="${b.id}"><strong>${R.esc(b.reference_number)}</strong><br>${R.esc(b.service_name_snapshot)} · ${R.datePH(b.event_date)}<br><span class="roma-pill">${R.esc(b.status.replaceAll('_',' '))}</span><br><small>${R.money(b.total_centavos)} · Paid ${R.money(b.paid_centavos)}</small></button></div>`).join(''):'<div class="roma-empty">No submitted or draft bookings yet.</div>';
 if(selectedBooking&&bookings.some(x=>x.id===selectedBooking))await showBooking(selectedBooking);if(calendar)calendar.refresh();}
@@ -338,11 +363,19 @@ if(f.id==='admin-message'){R.check(await db.from('booking_messages').insert({boo
 }));
 document.addEventListener('click',safe(async e=>{const btn=e.target.closest('button');if(!btn)return;
 const d=btn.dataset;if(d.deleteUser){await deleteCustomer(d.deleteUser);return;}if(d.selectBooking){await showBooking(d.selectBooking);return;}
-if(d.deleteTransaction){const b=bookings.find(b=>b.id===d.deleteTransaction);const confirmText=window.prompt(`Delete the entire transaction ${b?.reference_number||''}, including booking, payments and messages? This cannot be undone.\nType DELETE TRANSACTION to confirm:`);if(confirmText!=='DELETE TRANSACTION')return;const {data,error}=await db.functions.invoke('roma-drive-media',{body:{action:'delete_transaction',booking_id:d.deleteTransaction}});if(error||!data?.ok)throw Error(data?.error||error?.message||'Transaction deletion failed.');selectedBooking=null;$('admin-booking-details').innerHTML='Transaction deleted.';await loadBookings();R.notify(data.warning||'Transaction deleted successfully.','success');return;}if(d.adminPdf){const b=bookings.find(x=>x.id===d.adminPdf);const profile=R.check(await db.from('profiles').select('full_name,email,phone').eq('user_id',b.user_id).single());window.RomaPDF.build(b,profile);return;}
+if(d.deleteTransaction){const b=bookings.find(b=>b.id===d.deleteTransaction);const confirmText=window.prompt(`Delete the entire transaction ${b?.reference_number||''}, including booking, payments and messages? This cannot be undone.\nType DELETE TRANSACTION to confirm:`);if(confirmText!=='DELETE TRANSACTION')return;const data=await R.rpc('roma_admin_delete_transaction',{p_booking:d.deleteTransaction});if(!data?.ok)throw Error(data?.error||'Transaction deletion failed.');selectedBooking=null;$('admin-booking-details').innerHTML='Transaction deleted.';await loadBookings();R.notify(data.warning||'Transaction deleted successfully.','success');return;}if(d.adminPdf){const b=bookings.find(x=>x.id===d.adminPdf);const profile=R.check(await db.from('profiles').select('full_name,email,phone').eq('user_id',b.user_id).single());window.RomaPDF.build(b,profile);return;}
 if(d.driveProof){await R.viewDriveProof(d.driveProof);return;}if(d.fileBucket&&d.filePath){await signed(d.fileBucket,d.filePath);return;}
 if(d.viewService){const detail=$('package-detail-'+d.viewService);if(detail)detail.hidden=!detail.hidden;return;}if(d.editService){editService(d.editService);return;}
 if(d.editMethod){editMethod(d.editMethod);return;}
-if(d.deleteService){const svc=services.find(x=>x.id===d.deleteService);if(window.confirm(`Delete package "${svc.name}"? Packages with past bookings cannot be deleted.`)){await R.rpc('roma_admin_delete_package',{p_service:d.deleteService});await loadServices();R.notify('Package deleted.','success')}return;}
+if(d.deleteService){const svc=services.find(x=>x.id===d.deleteService);if(!svc)return;const linked=bookings.filter(x=>x.service_id===svc.id).length;
+const confirmation=window.prompt(`Delete package "${svc.name}"?\n\nThis also deletes ALL bookings associated with that package${linked?' (at least '+linked+' are shown)':''}.\nType DELETE PACKAGE to confirm:`);
+if(confirmation==='DELETE PACKAGE'){
+  const outcome=await R.rpc('roma_admin_delete_package_with_bookings',{p_service:svc.id});
+  if(!outcome?.ok)throw Error(outcome?.error||'Package deletion was not confirmed.');
+  selectedBooking=null;$('admin-booking-details').textContent='Select a booking to review.';
+  await Promise.all([loadServices(),loadBookings()]);if(calendar)await calendar.refresh();
+  R.notify(`Package deleted with ${outcome.bookings_deleted||0} linked booking(s).`,'success');
+}return;}
 if(d.deleteMethod){const m=methods.find(x=>x.id===d.deleteMethod);if(window.confirm(`Delete payment method "${m.name}"? Existing payment records may prevent deletion.`)){R.check(await db.from('payment_methods').delete().eq('id',d.deleteMethod));await loadMethods();R.notify('Payment method deleted.','success')}return;}
 if(d.unblock){R.check(await db.from('blocked_dates').delete().eq('event_date',d.unblock));await loadBlocked();R.notify('Date unblocked.','success');return;}
 if(d.payApprove){await R.rpc('review_booking_payment',{p_payment:d.payApprove,p_approve:true,p_rejection:null});R.notify('Payment verified.','success');await loadBookings();return;}
@@ -351,5 +384,7 @@ if(d.approve){if(!window.confirm('Approve this event and reserve the date?'))ret
 if(d.reject){const reason=window.prompt('Enter the reason for rejecting this booking:');if(!reason?.trim())return;await R.rpc('admin_decide_booking',{p_booking:d.reject,p_approve:false,p_reason:reason.trim()});R.notify('Booking rejected.','success');await loadBookings();return;}
 if(d.complete){if(!window.confirm('Mark this event as completed?'))return;await R.rpc('admin_complete_booking',{p_booking:d.complete});R.notify('Service marked complete.','success');await loadBookings();return;}
 }));
+$('delete-all-bookings').addEventListener('click',safe(async()=>bulkDelete('bookings')));
+$('delete-all-packages').addEventListener('click',safe(async()=>bulkDelete('packages')));
 initialize().catch(e=>{ $('admin-loader').hidden=true; R.notify('Dashboard could not start: '+R.readable(e),'error'); });
 })();

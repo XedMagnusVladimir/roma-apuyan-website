@@ -206,3 +206,11 @@ body:not(.roma-app) .nav-links a[href='booking.html'] {color:#f2bdd0;}
 #my-booking-details{min-width:0;overflow-wrap:anywhere}
 #my-bookings button{text-align:left;width:100%}
 @media(max-width:620px){.roma-payment-summary{grid-template-columns:1fr}.roma-booking-heading{display:block}.roma-booking-heading .roma-pill{display:inline-block;margin-top:.4rem}}
+
+/* Stage 18: dedicated bulk-action area, consistent with the existing studio design */
+.roma-bulk-panel {width:min(100%,1440px);margin:18px auto 28px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;border:1px solid rgba(236,168,190,.35);border-radius:20px;background:linear-gradient(120deg,rgba(91,34,55,.25),rgba(42,22,38,.20));}
+.roma-bulk-panel strong{font-size:15px;color:#f6cedf;letter-spacing:.01em;}
+.roma-bulk-panel p{font-size:13px;line-height:1.55;color:#d5bcc9;margin:7px 0 0;max-width:700px;}
+.roma-bulk-panel .roma-btn{min-width:185px;flex-shrink:0;}
+.roma-bulk-panel .roma-btn:disabled{opacity:.6;cursor:wait;}
+@media(max-width:640px){.roma-bulk-panel{align-items:stretch;padding:18px 14px}.roma-bulk-panel .roma-btn{width:100%;}}
