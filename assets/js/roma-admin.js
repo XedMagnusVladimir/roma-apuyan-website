@@ -2,67 +2,96 @@
 'use strict';
 const R=window.Roma, db=R.client, $=R.qs;
 let customerRows=[], customerTotal=0, customerOffset=0, customerSearchTimer=null, customersRequest=0;
+let activeAdminTab='requests';
 const CUSTOMERS_PAGE_SIZE=50;
 let user, bookings=[],selectedBooking=null,services=[],methods=[],options=[],serviceMethodLinks=[], blocked=[],imageRows=[],calendar=null;
 const imageSlots=[['hero_primary','Homepage — main photo','hero'],['hero_secondary','Homepage — second photo','hero'], ...Array.from({length:6},(_,i)=>[`gallery_${i+1}`,`Gallery — photo ${i+1}`,'gallery']),['service_portraits','Service card — portraits','website'],['service_events','Service card — events','website'],['service_films','Service card — films','website'],['service_editorial','Service card — editorial','website']];
 function safe(fn){return async e=>{try{R.clear();if(e?.type==='submit'&&e.preventDefault)e.preventDefault();await fn(e)}catch(err){R.notify(R.readable(err),'error')}}}
-function tab(which){document.querySelectorAll('[data-admin-tab]').forEach(b=>b.classList.toggle('active',b.dataset.adminTab===which));['requests','services','payments','calendar','images','customers'].forEach(n=>$('admin-'+n).hidden=n!==which);}
+function tab(which){
+  activeAdminTab=which;
+  document.querySelectorAll('[data-admin-tab]').forEach(b=>{
+    const current=b.dataset.adminTab===which;
+    b.classList.toggle('active',current);
+    b.setAttribute('aria-selected',String(current));
+  });
+  for(const n of ['requests','services','payments','calendar','images','customers']){
+    const panel=$('admin-'+n);
+    if(panel)panel.hidden=n!==which;
+  }
+}
+async function initialData(){
+  // A failing secondary query must never block access to customers or other sections.
+  const jobs=[['services',loadServices],['payment methods',loadMethods],['bookings',loadBookings],['blocked dates',loadBlocked],['website images',loadImages]];
+  const results=await Promise.allSettled(jobs.map(async ([name,run])=>{await run();return name;}));
+  const failed=results.map((r,i)=>r.status==='rejected'?`${jobs[i][0]}: ${R.readable(r.reason)}`:null).filter(Boolean);
+  if(failed.length)R.notify('Some dashboard sections could not load: '+failed.join(' | '),'error');
+  return failed;
+}
 async function initialize(){
   const loader=$('admin-loader');
   loader.hidden=false;
   $('admin-auth').hidden=true;
   $('admin-console').hidden=true;
+  $('admin-logout').hidden=true;
   try{
     user=await R.loggedIn();
-    if(!user){
-      $('admin-auth').hidden=false;
-      $('admin-logout').hidden=true;
-      return;
-    }
-    if(!(await R.isAdmin(user))){
-      $('admin-auth').hidden=false;
-      $('admin-logout').hidden=true;
-      throw Error('This account does not have the Super Administrator role.');
-    }
+    if(!user){$('admin-auth').hidden=false;return;}
+    if(!(await R.isAdmin(user))){$('admin-auth').hidden=false;throw Error('This account does not have the Super Administrator role.');}
+    $('admin-user').textContent='Signed in as '+user.email+' · Super Administrator';
+    // Show the screen only after initial data is loaded. Always reveal UI even on partial errors.
+    await initialData();
     $('admin-console').hidden=false;
     $('admin-logout').hidden=false;
-    $('admin-user').textContent='Signed in as '+user.email+' · Super Administrator';
-    await Promise.all([loadServices(),loadMethods(),loadBookings(),loadBlocked(),loadImages()]);
-    if(!calendar)calendar=window.RomaCalendar.mount('calendar-admin',{mode:'admin',fetchMonth:async(start,end)=>{
-      const busy=await R.rpc('unavailable_booking_dates',{p_start:start,p_end:end});
-      return {busy:busy.map(x=>x.event_date),events:bookings.filter(b=>['approved','completed'].includes(b.status)).map(b=>b.event_date)};
-    }});else calendar.refresh();
+    tab(activeAdminTab);
+    try{
+      if(!calendar)calendar=window.RomaCalendar.mount('calendar-admin',{mode:'admin',fetchMonth:async(start,end)=>{
+        const busy=await R.rpc('unavailable_booking_dates',{p_start:start,p_end:end});
+        return {busy:busy.map(x=>x.event_date),events:bookings.filter(b=>['approved','completed'].includes(b.status)).map(b=>b.event_date)};
+      }});
+      else calendar.refresh();
+    }catch(error){R.notify('Calendar unavailable: '+R.readable(error),'error');}
+    if(activeAdminTab==='customers')await loadCustomers();
   }finally{loader.hidden=true;}
 }
 async function loadCustomers(){
   const requestId=++customersRequest;
   const tbody=$('customer-list');
-  tbody.innerHTML='<tr><td colspan="6">Loading registered accounts…</td></tr>';
+  const state=$('customer-directory-state');
+  state.textContent='Loading registered Supabase Auth accounts…';
+  tbody.innerHTML='<tr><td colspan="6">Loading customer directory…</td></tr>';
+  $('customer-count').textContent='Loading…';
   try{
-    const rows=await R.rpc('roma_admin_list_customers',{
-      p_search: $('customer-search').value.trim(),
+    const result=await R.rpc('roma_admin_customer_directory_v2',{
+      p_search:$('customer-search').value.trim(),
       p_limit:CUSTOMERS_PAGE_SIZE,
       p_offset:customerOffset
     });
     if(requestId!==customersRequest)return;
-    customerRows=rows||[];
-    customerTotal=Number(rows?.[0]?.total_count||0);
+    const data=typeof result==='string'?JSON.parse(result):result;
+    if(!data || !Array.isArray(data.rows))throw Error('Unexpected customer directory response. Run 08_CUSTOMER_DIRECTORY_V2.sql.');
+    customerRows=data.rows;
+    customerTotal=Number(data.total||0);
+    state.textContent=`Registered accounts loaded successfully. ${customerTotal} matching account(s).`;
     renderCustomers();
   }catch(err){
     if(requestId!==customersRequest)return;
-    tbody.innerHTML='<tr><td colspan="6">Unable to load customers. '+R.esc(R.readable(err))+'</td></tr>';
+    const message=R.readable(err);
+    const install=message.includes('roma_admin_customer_directory_v2') || message.includes('schema cache')
+      ? 'Run 08_CUSTOMER_DIRECTORY_V2.sql in Supabase SQL Editor, then click Refresh customers.' : message;
+    state.textContent='Customer list could not load: '+install;
+    tbody.innerHTML='<tr><td colspan="6">'+R.esc(install)+'</td></tr>';
     $('customer-count').textContent='Customer directory unavailable';
-    R.notify(R.readable(err),'error');
+    $('customers-prev').disabled=true;
+    $('customers-next').disabled=true;
   }
 }
 function renderCustomers(){
-  const filtered=customerRows;
-  $('customer-list').innerHTML=filtered.length?filtered.map(c=>{
+  $('customer-list').innerHTML=customerRows.length?customerRows.map(c=>{
     const role=c.role||'customer';
-    const canDelete=c.user_id!==user.id && role!=='super_admin';
+    const canDelete=c.user_id!==user.id&&role!=='super_admin';
     const verified=c.email_verified?'Verified':'Awaiting verification';
     const joined=c.registered_at?new Date(c.registered_at).toLocaleDateString('en-PH',{dateStyle:'medium'}):'—';
-    return `<tr><td>${R.esc(c.full_name||'Customer')}</td><td>${R.esc(c.email)}<br><small class="roma-muted">${verified}</small></td><td>${R.esc(c.phone)}</td><td>${R.esc(role)}</td><td>${R.esc(joined)}</td><td>${canDelete?`<button class="roma-btn warn tiny" data-delete-user="${c.user_id}" type="button">Delete User</button>`:'Protected administrator'}</td></tr>`;
+    return `<tr><td>${R.esc(c.full_name||'Customer')}</td><td>${R.esc(c.email)}<br><small class="roma-muted">${verified}</small></td><td>${R.esc(c.phone||'—')}</td><td>${R.esc(role)}</td><td>${R.esc(joined)}</td><td>${canDelete?`<button class="roma-btn warn tiny" data-delete-user="${R.esc(c.user_id)}" type="button">Delete User</button>`:'Protected administrator'}</td></tr>`;
   }).join(''):'<tr><td colspan="6">No registered accounts match your search.</td></tr>';
   const from=customerTotal?customerOffset+1:0;
   const to=customerTotal?Math.min(customerOffset+customerRows.length,customerTotal):0;
@@ -150,5 +179,5 @@ if(d.approve){if(!window.confirm('Approve this event and reserve the date?'))ret
 if(d.reject){const reason=window.prompt('Enter the reason for rejecting this booking:');if(!reason?.trim())return;await R.rpc('admin_decide_booking',{p_booking:d.reject,p_approve:false,p_reason:reason.trim()});R.notify('Booking rejected.','success');await loadBookings();return;}
 if(d.complete){if(!window.confirm('Mark this event as completed?'))return;await R.rpc('admin_complete_booking',{p_booking:d.complete});R.notify('Service marked complete.','success');await loadBookings();return;}
 }));
-initialize().catch(e=>R.notify(R.readable(e),'error'));
+initialize().catch(e=>{ $('admin-loader').hidden=true; R.notify('Dashboard could not start: '+R.readable(e),'error'); });
 })();

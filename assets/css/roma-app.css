@@ -30,3 +30,42 @@ body.roma-app{background:radial-gradient(ellipse at 82% 0%,rgba(158,61,105,.13),
 .roma-customer-pagination{margin-top:18px}
 @media(max-width:800px){.roma-top{position:sticky;top:0;padding:0 15px}.roma-top-inner{min-height:70px;flex-wrap:wrap;padding:10px 0;gap:12px}.roma-logo.brand{min-width:auto}.roma-logo .brand-mark{font-size:42px}.roma-top-links{gap:12px;overflow-x:auto;flex-wrap:nowrap;width:100%;padding:0 0 8px;justify-content:flex-start}.roma-top-links a{white-space:nowrap;font-size:11px}.roma-top-links .roma-btn{white-space:nowrap}.roma-wrap{padding:28px 17px 76px}}
 @media(prefers-reduced-motion:reduce){.roma-loader-ring{animation:none}}
+
+
+/* STAGE 10 — Consistent navigation + reliable hidden panels */
+[hidden], .roma-app [hidden], .roma-app .roma-loading[hidden], .roma-app #admin-console[hidden], .roma-app section[hidden]{display:none !important}
+.roma-top{display:block;position:sticky;top:0;width:100%;padding:0 24px;background:rgba(11,8,12,.97);border-bottom:1px solid rgba(247,194,219,.19);z-index:50}
+.roma-top-inner{width:100%;max-width:1220px;margin:0 auto;display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;column-gap:30px;min-height:88px;padding:10px 0}
+.roma-logo.brand{display:inline-flex;align-items:center;gap:13px;min-width:180px;max-width:280px;flex:none;text-decoration:none;white-space:nowrap}
+.roma-logo .brand-mark{font-family:'Cormorant Garamond',Georgia,serif;font-size:47px;font-weight:500;line-height:.85;letter-spacing:-.13em;padding-right:5px}
+.roma-logo .brand-text{font:600 9px/1.5 'DM Sans',Arial,sans-serif;letter-spacing:.26em;text-transform:uppercase;white-space:normal}
+.roma-top-links{display:flex;align-items:center;justify-content:flex-end;gap:clamp(12px,1.8vw,26px);min-width:0;flex-wrap:nowrap}
+.roma-top-links a{white-space:nowrap;flex:none;font-size:12px;line-height:1.5;letter-spacing:.035em}
+.roma-top-links .roma-btn{flex:none;white-space:nowrap;min-height:37px;margin:0;padding:8px 14px;border-radius:22px;font-size:12px}
+.roma-toolbar{display:flex;align-items:center;gap:9px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:8px;margin:18px 0 25px;scrollbar-width:thin;scrollbar-color:#70465e transparent}
+.roma-toolbar .roma-tab{flex:0 0 auto;white-space:nowrap;height:44px;display:inline-flex;align-items:center;justify-content:center;padding:10px 17px;line-height:1.2}
+.roma-wrap{width:100%;max-width:1220px;margin:0 auto;padding:40px 24px 100px;min-height:calc(100vh - 176px)}
+.roma-app h1{margin-top:6px;margin-bottom:12px}
+.roma-loading{min-height:140px}
+.roma-table-wrap{max-width:100%;overflow:auto;border:1px solid var(--stroke);border-radius:14px}
+.roma-table{min-width:750px}
+.roma-table th{background:#261925;color:#f4d9e2;position:sticky;top:0}
+.roma-table td,.roma-table th{padding:13px 14px}
+.roma-status-line{margin:12px 0 16px;color:var(--faint);font-size:13px}
+.roma-customer-pagination{margin-top:16px}
+@media(max-width:1120px){
+ .roma-top-inner{grid-template-columns:1fr;row-gap:12px;min-height:0;padding:15px 0 10px}
+ .roma-top-links{width:100%;justify-content:flex-start;gap:22px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;padding:0 0 10px;scrollbar-width:thin;scrollbar-color:#70465e transparent}
+ .roma-logo.brand{min-width:0}
+}
+@media(max-width:680px){
+ .roma-top{padding:0 16px}
+ .roma-top-inner{padding:12px 0 8px;row-gap:12px}
+ .roma-logo .brand-mark{font-size:43px}
+ .roma-top-links{gap:19px}
+ .roma-wrap{padding:28px 16px 70px}
+ .roma-app h1{font-size:clamp(36px,8vw,48px)}
+ .roma-app h2{font-size:30px}
+ .roma-toolbar{gap:7px}
+ .roma-toolbar .roma-tab{font-size:11px;padding:10px 13px}
+}
