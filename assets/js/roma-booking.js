@@ -17,7 +17,21 @@ const priceFor=(svc,opt)=>{const p=Number(svc.base_price_centavos);return opt===
 const initialFor=(svc,opt)=>opt==='after_service_plus_10'?0:opt==='deposit_25'?Math.round(Number(svc.base_price_centavos)*.25):priceFor(svc,opt);
 const optLabel=o=>R.optionText[o]||o;
 async function servicesLoad(){services=R.check(await db.from('services').select('*').eq('is_active',true).order('name'));options=R.check(await db.from('service_payment_options').select('*'));
-const html=services.length?services.map(s=>`<article class="roma-card">${s.banner_drive_file_id?`<img class="roma-banner" src="${R.image(s.banner_drive_file_id)}" alt="${R.esc(s.name)}">`:''}<h3>${R.esc(s.name)}</h3><p>${R.esc(s.description)}</p><p class="roma-amount">${R.money(s.base_price_centavos)}</p><p class="roma-muted">${R.readableDuration(s.duration_minutes)} · ${Array.isArray(s.inclusions)?s.inclusions.length:0} inclusions</p><ul>${Array.isArray(s.inclusions)?s.inclusions.map(i=>`<li>${R.esc(i)}</li>`).join(''):''}</ul>${user?`<button class="roma-btn" data-pick="${s.id}">Request service</button>`:`<a class="roma-btn secondary" href="#auth-view">Sign in to request</a>`}</article>`).join(''):'<div class="roma-empty">Service packages will appear here when published by the studio.</div>';
+const html=services.length?services.map(s=>`<article class="roma-service-card" aria-label="${R.esc(s.name)}">
+  <div class="roma-service-media">
+    ${s.banner_drive_file_id?`<img src="${R.image(s.banner_drive_file_id)}" alt="${R.esc(s.name)}" loading="lazy" decoding="async">`:`<div class="roma-service-art"><span aria-hidden="true">RA</span></div>`}
+    <span class="roma-service-media-label">CREATIONS BY ROMA APUYAN</span>
+  </div>
+  <div class="roma-service-body">
+    <div class="roma-service-overline"><span>THE STUDIO COLLECTION</span><span class="roma-service-availability">Available</span></div>
+    <h3>${R.esc(s.name)}</h3>
+    <p class="roma-service-description">${R.esc(s.description||'An unforgettable experience, carefully prepared for your story.')}</p>
+    <div class="roma-service-price-block"><span>PACKAGE PRICE</span><strong>${R.money(s.base_price_centavos)}</strong></div>
+    <div class="roma-service-specs"><span>${R.readableDuration(s.duration_minutes)}</span><span>${Array.isArray(s.inclusions)?s.inclusions.length:0} inclusions</span></div>
+    ${Array.isArray(s.inclusions)&&s.inclusions.length?`<details class="roma-service-inclusions"><summary>View all inclusions</summary><ul>${s.inclusions.map(i=>`<li>${R.esc(i)}</li>`).join('')}</ul></details>`:''}
+    ${user?`<button class="roma-btn roma-service-action" type="button" data-pick="${s.id}">Request this service <span aria-hidden="true">↗</span></button>`:`<a class="roma-btn roma-service-action" href="#auth-view">Sign in to request <span aria-hidden="true">↗</span></a>`}
+  </div>
+</article>`).join(''):'<div class="roma-empty">Service packages will appear here when published by the studio.</div>';
 $('public-services').innerHTML=html;$('book-services').innerHTML=html;
 }
 async function updateAvailability(){const v=document.querySelector('#new-booking input[name="event_date"]').value;
