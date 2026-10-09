@@ -64,22 +64,77 @@ async function uploadIds(form){const b=myBookings.find(b=>b.id===selected);if(!b
 for(const slot of [1,2]){if(existing.includes(slot))continue;const input=form.querySelector(`[name="id_${slot}"]`);const file=input?.files?.[0];if(!file)throw Error('Choose both government ID files.');const path=`${user.id}/${b.id}/id-${slot}-${crypto.randomUUID()}.${file.name.split('.').pop().toLowerCase()}`;await uploadPrivate(file,'roma-customer-ids',path);R.check(await db.from('customer_identity_documents').insert({booking_id:b.id,user_id:user.id,document_slot:slot,storage_path:path}));}
 R.notify('Two ID documents saved to private storage.','success');await loadBookings(b.id);}
 async function getMethods(b){methods=await R.rpc('list_booking_payment_methods',{p_booking:b.id});return methods||[]}
-async function paymentDetails(b,methodId){const details=await R.rpc('get_booking_payment_details',{p_booking:b.id,p_method:methodId});const d=details?.[0];let methodIcon='';if(d){const {data:iconRow}=await db.from('payment_methods').select('icon_drive_file_id').eq('id',methodId).maybeSingle();if(iconRow?.icon_drive_file_id)methodIcon=`<img src="${R.image(iconRow.icon_drive_file_id)}" alt="Payment method icon" class="roma-customer-method-icon">`;}$('payment-account').innerHTML=d?`<div class="roma-note">${methodIcon}<strong>${R.esc(d.method_name)}</strong><br>${R.esc(d.provider)}<br>${R.esc(d.account_holder)}<br>${R.esc(d.account_details)}<br>${R.esc(d.instructions)}${d.qr_drive_file_id?`<img src="${R.image(d.qr_drive_file_id)}" class="roma-banner" alt="Payment QR">`:''}</div>`:'<p>Select an available method.</p>';}
-async function displayBooking(id){selected=id;const b=myBookings.find(b=>b.id===id);if(!b)return;const docs=R.check(await db.from('customer_identity_documents').select('document_slot').eq('booking_id',id));const pays=R.check(await db.from('booking_payments').select('*').eq('booking_id',id).order('created_at',{ascending:false}));const messages=R.check(await db.from('booking_messages').select('*').eq('booking_id',id).eq('is_internal',false).order('created_at'));
-const docsDone=docs.length===2, canEvent=['payment_verified','pending_approval'].includes(b.status)&&(!b.event_name),canPay=['awaiting_payment','payment_under_review','payment_verified','approved'].includes(b.status)&&b.option_code!=='after_service_plus_10';const showId=!docsDone&&!['rejected','cancelled','completed'].includes(b.status);
-let html=`<h3>${R.esc(b.reference_number)}</h3><p><strong>${R.esc(b.service_name_snapshot)}</strong><br>${R.datePH(b.event_date)}<br>${R.esc(optLabel(b.option_code))}<br><span class="roma-pill">${R.esc(b.status.replaceAll('_',' '))}</span></p><p>Contract: <strong>${R.money(b.total_centavos)}</strong><br>Verified paid: ${R.money(b.paid_centavos)}<br>Balance: <strong>${R.money(b.total_centavos-b.paid_centavos)}</strong></p>${b.rejection_reason?`<div class="roma-note">Reason: ${R.esc(b.rejection_reason)}</div>`:''}`;
-if(showId) html+=`<hr class="roma-divider"><h3>Upload 2 government IDs</h3><p class="roma-muted">Each file can be a JPG, PNG, WebP, or PDF up to 10 MB.</p><form id="ids-form">${[1,2].map(n=>`<label class="roma-field">Government ID ${n} ${docs.some(d=>d.document_slot===n)?'— received':`<input name="id_${n}" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>`}</label>`).join('')}<button class="roma-btn" type="submit">Upload IDs</button></form>`;
-if(docsDone)html+='<div class="roma-note">Two government IDs received securely.</div>';
-if(canPay && docsDone && b.paid_centavos < b.initial_due_centavos){const pm=await getMethods(b);html+=`<hr class="roma-divider"><h3>Submit payment proof</h3><p>Required upfront: ${R.money(b.initial_due_centavos)} · Already verified: ${R.money(b.paid_centavos)}</p>${pm.length?`<form id="payment-form"><label class="roma-field">Payment method<select id="pay-method" name="method" required>${pm.map(m=>`<option value="${m.method_id}">${R.esc(m.method_name)} — ${R.esc(m.provider)}</option>`).join('')}</select></label><div id="payment-account"></div><label class="roma-field">Amount actually paid (PHP)<input name="amount" type="number" min="0.01" step="0.01" value="${((b.initial_due_centavos-b.paid_centavos)/100).toFixed(2)}" required></label><label class="roma-field">Bank / e-wallet used<input name="bank" maxlength="150" required></label><label class="roma-field">Transaction reference<input name="reference" maxlength="180" required></label><label class="roma-field">Payment screenshot <input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label><button class="roma-btn" type="submit">Submit for verification</button></form>`:'<div class="roma-note">This package has no active payment method assigned. Contact the studio.</div>'}`;
-if(pm.length)setTimeout(()=>paymentDetails(b,pm[0].method_id).catch(e=>R.notify(R.readable(e),'error')),0);
-}
-if(b.status==='payment_under_review')html+='<div class="roma-note">Your submitted payment is awaiting manual verification.</div>';
-if(canEvent&&docsDone)html+=`<hr class="roma-divider"><h3>Complete event details</h3><form id="event-form"><label class="roma-field">Event name<input name="name" maxlength="180" required></label><label class="roma-field">Event location<input name="location" maxlength="250" required></label><div class="roma-2cols"><label class="roma-field">Start time<input name="start" type="time" required></label><label class="roma-field">Duration<input name="duration" type="number" min="1" max="8760" value="${b.event_duration_minutes?Math.max(1,Math.round(b.event_duration_minutes/60)):2}" required><select name="duration_unit"><option value="hours">Hours</option><option value="minutes">Minutes</option><option value="days">Days</option></select></label></div><label class="roma-field">Notes<textarea name="notes" maxlength="2000"></textarea></label><button class="roma-btn" type="submit">Submit event for approval</button></form>`;
-if(b.event_name)html+=`<hr class="roma-divider"><h3>Event information</h3><p>${R.esc(b.event_name)}<br>${R.esc(b.event_location)}<br>${R.esc(b.event_start_time||'')} · ${R.readableDuration(b.event_duration_minutes||0)}</p>`;
-if(['approved','completed','rejected'].includes(b.status))html+=`<button class="roma-btn secondary" data-download-pdf="${b.id}">Download ${b.status==='rejected'?'rejection notice':'booking slip'} (PDF)</button>`;
-if(pays.length)html+=`<hr class="roma-divider"><h3>Payment history</h3>${pays.map(p=>`<p class="roma-mini">${R.money(p.amount_centavos)} — ${R.esc(p.status)} · ${R.esc(p.transaction_reference)}</p>`).join('')}`;
-html+=`<hr class="roma-divider"><h3>Messages</h3><div>${messages.length?messages.map(m=>`<div class="roma-note">${R.esc(m.message)}<br><span class="roma-muted">${new Date(m.created_at).toLocaleString()}</span></div>`).join(''):'<p class="roma-muted">No messages yet.</p>'}</div><form id="message-form"><label class="roma-field">Send a message to the studio<textarea name="message" required maxlength="5000"></textarea></label><button class="roma-btn" type="submit">Send message</button></form>`;
-$('my-booking-details').innerHTML=html;
+async function paymentDetails(b,methodId){const details=await R.rpc('get_booking_payment_details',{p_booking:b.id,p_method:methodId});const d=details?.[0];let methodIcon='';if(d){const {data:iconRow}=await db.from('payment_methods').select('icon_drive_file_id').eq('id',methodId).maybeSingle();if(iconRow?.icon_drive_file_id)methodIcon=`<img src="${R.image(iconRow.icon_drive_file_id)}" alt="Payment method icon" class="roma-customer-method-icon">`;}if(!$('payment-account'))return; $('payment-account').innerHTML=d?`<div class="roma-note">${methodIcon}<strong>${R.esc(d.method_name)}</strong><br>${R.esc(d.provider)}<br>${R.esc(d.account_holder)}<br>${R.esc(d.account_details)}<br>${R.esc(d.instructions)}${d.qr_drive_file_id?`<img src="${R.image(d.qr_drive_file_id)}" class="roma-banner" alt="Payment QR">`:''}</div>`:'<p>Select an available method.</p>';}
+async function displayBooking(id){
+  selected=id;
+  const b=myBookings.find(x=>x.id===id);if(!b)return;
+  const [docs,pays,messages,profile]=await Promise.all([
+    R.query(db.from('customer_identity_documents').select('document_slot').eq('booking_id',id)),
+    R.query(db.from('booking_payments').select('*').eq('booking_id',id).order('created_at',{ascending:false})),
+    R.query(db.from('booking_messages').select('*').eq('booking_id',id).eq('is_internal',false).order('created_at')),
+    R.query(db.from('profiles').select('full_name,email,phone').eq('user_id',user.id).maybeSingle())
+  ]);
+  const docSlots=new Set(docs.map(d=>Number(d.document_slot)));
+  const docsDone=docSlots.has(1)&&docSlots.has(2);
+  const contactReady=!!(profile?.full_name?.trim()&&profile?.email?.trim()&&profile?.phone?.trim());
+  const after=b.option_code==='after_service_plus_10';
+  const terminal=['rejected','cancelled','completed'].includes(b.status);
+  const eventCompleted=!!(b.event_name&&b.event_location&&b.event_start_time&&b.event_duration_minutes);
+  const canEvent=!terminal&&!eventCompleted&&docsDone&&contactReady&&Number(b.paid_centavos)>=Number(b.initial_due_centavos)&&
+    (after?['awaiting_details','pending_approval'].includes(b.status):b.status==='payment_verified');
+  const hasUpfront=!after&&Number(b.initial_due_centavos)>0;
+  const needsInitialPay=hasUpfront&&Number(b.paid_centavos)<Number(b.initial_due_centavos)&&!terminal;
+  const methodChoices=needsInitialPay?await getMethods(b):[];
+  const statusLabel={awaiting_details:'Awaiting identity and event details',awaiting_payment:'Awaiting payment',payment_under_review:'Payment awaiting verification',payment_verified:'Payment verified — enter event details',pending_approval:'Event request awaiting studio approval',approved:'Approved',completed:'Completed',rejected:'Rejected'};
+  let html=`<header class="roma-booking-heading"><h3>${R.esc(b.reference_number)}</h3><span class="roma-pill">${R.esc(statusLabel[b.status]||b.status)}</span></header>
+  <p><strong>${R.esc(b.service_name_snapshot)}</strong> · ${R.datePH(b.event_date)}<br>${R.esc(optLabel(b.option_code))}</p>
+  <div class="roma-payment-summary"><div><span>Contract amount</span><strong>${R.money(b.total_centavos)}</strong></div><div><span>Verified payments</span><strong>${R.money(b.paid_centavos)}</strong></div><div><span>Outstanding balance</span><strong>${R.money(Math.max(0,b.total_centavos-b.paid_centavos))}</strong></div></div>
+  ${b.rejection_reason?`<div class="roma-note">Reason: ${R.esc(b.rejection_reason)}</div>`:''}`;
+  if(!terminal&&!eventCompleted){
+    html+=`<section class="roma-checkout-step"><h3>1. Your contact information</h3>
+      <p class="roma-muted">Name, email and phone number are required for the booking.</p>
+      <form id="booking-contact-form" class="roma-checkout-form">
+      <label class="roma-field">Full name<input name="full_name" maxlength="150" required value="${R.esc(profile?.full_name||'')}"></label>
+      <label class="roma-field">Email address<input name="email" type="email" readonly value="${R.esc(profile?.email||user.email||'')}"></label>
+      <label class="roma-field">Phone number<input name="phone" maxlength="35" required value="${R.esc(profile?.phone||'')}"></label>
+      <button class="roma-btn secondary" type="submit">${contactReady?'Update contact details':'Save contact details'}</button>
+      ${contactReady?'<span class="roma-inline-success">Contact details saved</span>':''}</form></section>`;
+    html+=`<section class="roma-checkout-step"><h3>2. Two government IDs</h3>
+      <p class="roma-muted">Upload both documents before sending your event request.</p>
+      ${docsDone?'<div class="roma-inline-success">Both documents received.</div>':`<form id="ids-form" class="roma-checkout-form">${[1,2].map(n=>`<label class="roma-field">Government ID ${n} ${docSlots.has(n)?'— received':`<input name="id_${n}" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>`}</label>`).join('')}<button class="roma-btn" type="submit">Upload government IDs</button></form>`}
+      </section>`;
+  }
+  if(hasUpfront&&!terminal){
+    html+=`<section class="roma-checkout-step"><h3>3. Manual payment — ${R.money(b.initial_due_centavos)} due now</h3><p class="roma-muted">Select a payment method to view the recipient details, pay manually and submit your receipt. You may return later.</p>`;
+    if(b.status==='payment_under_review')html+='<div class="roma-note">Your payment proof is under review. It will count as paid only when the studio verifies it.</div>';
+    if(Number(b.paid_centavos)>=Number(b.initial_due_centavos))html+='<div class="roma-inline-success">Required initial payment verified. You may enter event details.</div>';
+    if(needsInitialPay&&methodChoices.length){
+      html+=`<label class="roma-field">Available payment method<select id="pay-method-preview">${methodChoices.map(m=>`<option value="${R.esc(m.method_id)}">${R.esc(m.method_name)} — ${R.esc(m.provider)}</option>`).join('')}</select></label><div id="payment-account" class="roma-payment-account"></div>`;
+      if(b.status!=='payment_under_review'&&contactReady&&docsDone){
+        html+=`<form id="payment-form" class="roma-checkout-form"><input type="hidden" name="method" value="${R.esc(methodChoices[0].method_id)}">
+        <label class="roma-field">Amount actually paid (PHP)<input name="amount" type="number" min="0.01" step="0.01" value="${((b.initial_due_centavos-b.paid_centavos)/100).toFixed(2)}" required></label>
+        <label class="roma-field">Bank / e-wallet used<input name="bank" maxlength="150" required></label>
+        <label class="roma-field">Transaction/reference number<input name="reference" maxlength="180" required></label>
+        <label class="roma-field">Screenshot of payment<input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
+        <button class="roma-btn" type="submit">Submit payment proof for verification</button></form>`;
+      }else if(b.status!=='payment_under_review')html+='<p class="roma-muted">Save your contact details and upload both government IDs to enable receipt submission.</p>';
+      queueMicrotask(()=>paymentDetails(b,methodChoices[0].method_id).catch(e=>R.notify(R.readable(e),'error')));
+    }else if(needsInitialPay&&!methodChoices.length)html+='<div class="roma-note">The studio must configure an active payment method for this package.</div>';
+    html+='</section>';
+  }
+  if(after&&!terminal){html+=`<section class="roma-checkout-step"><h3>3. Pay after the service</h3><p>No upfront payment is required. Your agreed total is ${R.money(b.total_centavos)}, including the additional 10%. Payment will be recorded after the event.</p></section>`;}
+  if(!terminal){
+    html+='<section class="roma-checkout-step"><h3>4. Event details and studio approval</h3>';
+    if(canEvent){html+=`<form id="event-form" class="roma-checkout-form"><label class="roma-field">Event name<input name="name" maxlength="180" required></label><label class="roma-field">Location<input name="location" maxlength="250" required></label><div class="roma-2cols"><label class="roma-field">Event start time<input name="start" type="time" required></label><label class="roma-field">Event duration<input name="duration" type="number" min="1" max="8760" value="${Math.max(1,Math.round((b.event_duration_minutes||120)/60))}" required><select name="duration_unit"><option value="hours">Hours</option><option value="minutes">Minutes</option><option value="days">Days</option></select></label></div><label class="roma-field">Additional event notes<textarea name="notes" maxlength="2000"></textarea></label><button class="roma-btn" type="submit">Submit event details for studio approval</button></form>`;}
+    else if(eventCompleted)html+='<div class="roma-inline-success">Event details submitted; waiting for the studio decision.</div>';
+    else html+=`<p class="roma-muted">${!contactReady?'Save your contact details. ':''}${!docsDone?'Upload both IDs. ':''}${!after&&Number(b.paid_centavos)<Number(b.initial_due_centavos)?'The studio must verify the required upfront payment before this form unlocks. ':''}</p>`;
+    html+='</section>';
+  }
+  if(eventCompleted)html+=`<section class="roma-checkout-step"><h3>Submitted event information</h3><p>${R.esc(b.event_name)}<br>${R.esc(b.event_location)}<br>${R.esc(b.event_start_time)} · ${R.readableDuration(b.event_duration_minutes)}</p></section>`;
+  if(['approved','completed','rejected'].includes(b.status))html+=`<button class="roma-btn secondary" data-download-pdf="${b.id}">Download ${b.status==='rejected'?'rejection notice':'approved booking slip'} (PDF)</button>`;
+  html+=`<section class="roma-checkout-step"><h3>Payment history for this booking</h3>${pays.length?pays.map(p=>`<div class="roma-note"><strong>${R.money(p.amount_centavos)}</strong> · ${R.esc(p.status)}<br>Reference: ${R.esc(p.transaction_reference||'—')}<br>${p.status==='submitted'?'Awaiting verification by studio':p.status==='verified'?'Manually verified by studio':p.rejection_reason?R.esc(p.rejection_reason):''}</div>`).join(''):'<p class="roma-muted">No payment has been verified or submitted for this booking yet.</p>'}</section>`;
+  html+=`<section class="roma-checkout-step"><h3>Messages with the studio</h3>${messages.length?messages.map(m=>`<div class="roma-note">${R.esc(m.message)}<br><span class="roma-muted">${new Date(m.created_at).toLocaleString()}</span></div>`).join(''):'<p class="roma-muted">No messages yet.</p>'}<form id="message-form"><label class="roma-field">Send message<textarea name="message" maxlength="5000" required></textarea></label><button class="roma-btn secondary" type="submit">Send message</button></form></section>`;
+  $('my-booking-details').innerHTML=html;
 }
 $('login-form').addEventListener('submit',safe(async e=>{const f=e.currentTarget;R.check(await db.auth.signInWithPassword({email:f.elements.email.value.trim(),password:f.elements.password.value}));await loginState();R.notify('Signed in.','success');}));
 $('signup-form').addEventListener('submit',safe(async e=>{const f=e.currentTarget;const data=R.check(await db.auth.signUp({email:f.elements.email.value.trim(),password:f.elements.password.value,options:{data:{full_name:f.elements.full_name.value.trim()},emailRedirectTo:new URL('/email-confirmed.html',window.location.origin).toString()}}));R.notify(data.session?'Registration successful. Sign in to continue.':'Account created. Check your email for the confirmation link, then sign in.','success');if(data.session)await loginState();}));
@@ -99,12 +154,13 @@ $('new-booking-form').addEventListener('submit',safe(async e=>{
     committed=true;f.dataset.submitted='1';f.querySelectorAll('input,select,button').forEach(el=>el.disabled=true);
     $('booking-submit-status').textContent='Request submitted successfully. Continue your booking below.';
     $('new-booking').hidden=true;selected=id;await loadBookings(id);
-    showTab('profile');const prof=$('profile-form');if(prof.elements.full_name.value.trim()&&prof.elements.phone.value.trim())showTab('mine');
-    R.notify('Booking request submitted. Complete the required steps in My bookings.','success');
+    showTab('mine');
+    R.notify('Booking opened. Complete the contact, ID and payment steps shown here.','success');
   }catch(err){if(!committed){creatingBooking=false;button.disabled=false;$('booking-submit-status').textContent='Request not submitted. Please try again.';}else{$('booking-submit-status').textContent='Booking saved. Open My bookings to continue.';}throw err;}
 }));
-$('my-booking-details').addEventListener('change',safe(async e=>{if(e.target.name==='duration_unit'){const input=e.target.form.elements.duration;input.max=e.target.value==='days'?'365':e.target.value==='hours'?'8760':'525600';}if(e.target.id==='pay-method'){const b=myBookings.find(x=>x.id===selected);await paymentDetails(b,e.target.value)}}));
+$('my-booking-details').addEventListener('change',safe(async e=>{if(e.target.name==='duration_unit'){const input=e.target.form.elements.duration;input.max=e.target.value==='days'?'365':e.target.value==='hours'?'8760':'525600';}if(e.target.id==='pay-method-preview'){const b=myBookings.find(x=>x.id===selected);const form=$('payment-form');if(form)form.elements.method.value=e.target.value;await paymentDetails(b,e.target.value)}}));
 $('my-booking-details').addEventListener('submit',safe(async e=>{const form=e.target;const b=myBookings.find(x=>x.id===selected);if(!b)return;
+if(form.id==='booking-contact-form'){await R.rpc('update_my_profile',{p_full_name:form.elements.full_name.value.trim(),p_phone:form.elements.phone.value.trim()});R.notify('Contact information saved.','success');await loadBookings(b.id);}
 if(form.id==='ids-form') await uploadIds(form);
 if(form.id==='payment-form'){const file=form.elements.proof.files[0];const proof=await R.preparePrivateImage(file,'proof');const driveId=await R.uploadToDrive(proof,'payment_proof',b.id,message=>{const submit=form.querySelector('button[type=submit]');if(submit)submit.textContent=message;});const path='gdrive/'+driveId;await R.rpc('submit_booking_payment',{p_booking:b.id,p_method:form.elements.method.value,p_amount:Math.round(Number(form.elements.amount.value)*100),p_transaction_reference:form.elements.reference.value.trim(),p_bank_wallet:form.elements.bank.value.trim(),p_proof_path:path});R.notify('Payment proof submitted. An administrator will verify it.','success');await loadBookings(b.id)}
 if(form.id==='event-form'){await R.rpc('submit_event_details',{p_booking:b.id,p_name:form.elements.name.value.trim(),p_location:form.elements.location.value.trim(),p_start:form.elements.start.value,p_duration:R.durationMinutes(form.elements.duration.value,form.elements.duration_unit.value),p_notes:form.elements.notes.value.trim()});R.notify('Event request submitted for review.','success');await loadBookings(b.id)}

@@ -189,3 +189,20 @@ body:not(.roma-app) .nav-links a[href='booking.html'] {color:#f2bdd0;}
 .roma-app form[aria-busy="true"] button[type=submit]{opacity:.68;cursor:wait}
 .roma-app .roma-preview-caption{font-size:12px;line-height:1.55;letter-spacing:0;color:#c7a9b9}
 @media(max-width:600px){#admin-payments .roma-form-actions .roma-btn{flex:1;min-width:120px}}
+
+/* Stage 17: clear step-by-step booking and payment workflow */
+.roma-booking-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem}
+.roma-booking-heading h3{margin:0;overflow-wrap:anywhere;font-size:clamp(1.35rem,3vw,2rem)}
+.roma-payment-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;margin:1.1rem 0 1.5rem}
+.roma-payment-summary>div{padding:1rem;border:1px solid #523744;border-radius:13px;background:rgba(225,160,182,.05)}
+.roma-payment-summary span{display:block;color:#d8b9c8;font-size:.8rem;margin-bottom:.35rem}
+.roma-payment-summary strong{display:block;font-size:1.13rem;overflow-wrap:anywhere}
+.roma-checkout-step{border-top:1px solid #503844;margin:1.4rem 0;padding:1.45rem 0 .3rem}
+.roma-checkout-step h3{font-size:clamp(1.4rem,2.5vw,1.85rem);margin:0 0 .5rem}
+.roma-checkout-form{max-width:660px;display:grid;gap:.8rem;margin:1rem auto 0}
+.roma-checkout-step .roma-field{max-width:100%}
+.roma-payment-account{max-width:660px;margin:1rem auto}
+.roma-inline-success{display:inline-block;margin:.65rem 0;color:#b0e7cc;font-weight:600}
+#my-booking-details{min-width:0;overflow-wrap:anywhere}
+#my-bookings button{text-align:left;width:100%}
+@media(max-width:620px){.roma-payment-summary{grid-template-columns:1fr}.roma-booking-heading{display:block}.roma-booking-heading .roma-pill{display:inline-block;margin-top:.4rem}}
