@@ -174,16 +174,65 @@ function renderMethodChecks(){const selected=document.querySelector('#service-fo
 $('service-methods').innerHTML=methods.length?methods.map(m=>`<label><input name="method_options" type="checkbox" value="${m.id}" ${selected&&serviceMethodLinks.some(x=>x.service_id===selected&&x.method_id===m.id)?'checked':''}> ${R.esc(m.name)}${m.is_active?'':' (inactive)'}</label>`).join(''):'<p class="roma-muted">Create a payment method under Payment methods to assign it here.</p>';}
 function serviceReset(){const f=$('service-form');f.reset();f.elements.id.value='';f.elements.is_active.checked=true;f.querySelectorAll('[name="options"]').forEach(x=>x.checked=true);$('service-image-state').textContent='';renderMethodChecks();}
 function editService(id){const s=services.find(x=>x.id===id);if(!s)return;const f=$('service-form');f.elements.id.value=s.id;f.elements.name.value=s.name;f.elements.description.value=s.description;f.elements.price.value=(s.base_price_centavos/100).toFixed(2);f.elements.duration_unit.value=s.duration_minutes%1440===0?'days':s.duration_minutes%60===0?'hours':'minutes';f.elements.duration.value=f.elements.duration_unit.value==='days'?s.duration_minutes/1440:f.elements.duration_unit.value==='hours'?s.duration_minutes/60:s.duration_minutes;f.elements.duration.max=f.elements.duration_unit.value==='days'?'365':f.elements.duration_unit.value==='hours'?'8760':'525600';f.elements.inclusions.value=(s.inclusions||[]).join('\n');f.elements.image.value=s.banner_drive_file_id||'';$('service-image-state').textContent=s.banner_drive_file_id?'Existing banner attached. Select a new image to replace it.':'No banner uploaded.';f.elements.is_active.checked=s.is_active;f.querySelectorAll('[name="options"]').forEach(x=>x.checked=options.some(o=>o.service_id===s.id&&o.option_code===x.value));renderMethodChecks();tab('services');f.scrollIntoView({behavior:'smooth'});}
-async function saveService(e){const f=e.currentTarget;const id=f.elements.id.value;const file=f.elements.image_file.files[0];let parsed=String(f.elements.image.value||'').trim();if(file){$('service-image-state').textContent='Uploading banner to Google Drive…';parsed=await R.uploadToDrive(file,'service_banner');$('service-image-state').textContent='Banner uploaded to Google Drive.';}const incl=f.elements.inclusions.value.split('\n').map(x=>x.trim()).filter(Boolean);
-const data={name:f.elements.name.value.trim(),description:f.elements.description.value.trim(),base_price_centavos:Math.round(Number(f.elements.price.value)*100),duration_minutes:R.durationMinutes(f.elements.duration.value,f.elements.duration_unit.value),inclusions:incl,banner_drive_file_id:parsed||null,is_active:f.elements.is_active.checked,updated_at:new Date().toISOString()};
-let svcId=id;if(id){R.check(await db.from('services').update(data).eq('id',id));}else{const s=R.check(await db.from('services').insert(data).select('id').single());svcId=s.id;}
-R.check(await db.from('service_payment_options').delete().eq('service_id',svcId));const opt=Array.from(f.querySelectorAll('input[name="options"]:checked')).map(x=>({service_id:svcId,option_code:x.value}));if(opt.length)R.check(await db.from('service_payment_options').insert(opt));
-R.check(await db.from('service_payment_methods').delete().eq('service_id',svcId));const linked=Array.from(f.querySelectorAll('input[name="method_options"]:checked')).map(x=>({service_id:svcId,method_id:x.value}));if(linked.length)R.check(await db.from('service_payment_methods').insert(linked));
-R.notify('Service package saved.','success');await loadServices();serviceReset();}
-async function loadMethods(){methods=R.check(await db.from('payment_methods').select('*').order('name'));$('method-admin-list').innerHTML=methods.length?methods.map(m=>`<div class="roma-card"><h3>${R.esc(m.name)}</h3><p>${R.esc(m.provider)}<br>${R.esc(m.account_holder)}<br>${m.is_active?'Active':'Inactive'}</p><button class="roma-btn secondary tiny" data-edit-method="${m.id}">Edit</button><button class="roma-btn warn tiny" data-delete-method="${m.id}">Delete</button></div>`).join(''):'<p class="roma-muted">Add your first bank or e-wallet account.</p>';renderMethodChecks();}
+async function saveService(e){
+ const f=e.currentTarget;
+ const chosenMethods=Array.from(f.querySelectorAll('input[name="method_options"]:checked')).map(x=>x.value);
+ const chosenOptions=Array.from(f.querySelectorAll('input[name="options"]:checked')).map(x=>x.value);
+ const valid=methods.filter(m=>m.is_active && m.name?.trim() && m.account_holder?.trim() && m.account_details?.trim()).map(m=>m.id);
+ if(!chosenMethods.length || !chosenMethods.some(x=>valid.includes(x)))throw Error('Create and select a valid, active payment method first. Open the Payment methods tab.');
+ if(chosenMethods.some(x=>!valid.includes(x)))throw Error('Uncheck inactive or incomplete payment methods before saving.');
+ if(!chosenOptions.length)throw Error('Select at least one payment arrangement for this package.');
+ if(!Number.isFinite(Number(f.elements.price.value)) || Number(f.elements.price.value)<=0)throw Error('Enter a valid package price.');
+ const file=f.elements.image_file.files[0];let image=String(f.elements.image.value||'').trim();
+ if(file){$('service-image-state').textContent='Uploading banner to Google Drive…';image=await R.uploadToDrive(file,'service_banner');}
+ const data=await R.rpc('roma_admin_save_package',{
+  p_id:f.elements.id.value||null,p_name:f.elements.name.value.trim(),p_description:f.elements.description.value.trim(),
+  p_base_price_centavos:Math.round(Number(f.elements.price.value)*100),
+  p_duration_minutes:R.durationMinutes(f.elements.duration.value,f.elements.duration_unit.value),
+  p_inclusions:f.elements.inclusions.value.split('\n').map(x=>x.trim()).filter(Boolean),
+  p_banner_drive_file_id:image||null,p_active:f.elements.is_active.checked,
+  p_method_ids:chosenMethods,p_options:chosenOptions
+ });
+ if(!data)throw Error('Package could not be saved.');
+ R.notify('Service package saved with valid payment arrangements.','success');await loadServices();serviceReset();
+}
+function renderPaymentMethod(m){
+ const name=R.esc(m.name||'Payment method');
+ const provider=R.esc(m.provider||'Bank or e-wallet');
+ const holder=R.esc(m.account_holder||'Not provided');
+ const details=R.esc(m.account_details||'Not provided');
+ const initials=R.esc((m.name||m.provider||'P').trim().slice(0,1).toUpperCase());
+ const methodId=R.esc(m.id);
+ const status=m.is_active?'Active':'Inactive';
+ return `<article class="roma-payment-card" aria-label="${name}">
+   <div class="roma-payment-head"><div class="roma-payment-monogram" aria-hidden="true">${initials}</div>
+     <div class="roma-payment-meta"><h3 class="roma-payment-name">${name}</h3><p class="roma-payment-provider">${provider}</p></div>
+     <span class="roma-payment-status ${m.is_active?'is-active':''}">${status}</span></div>
+   <dl class="roma-payment-details"><div><dt>Account holder</dt><dd>${holder}</dd></div>
+     <div><dt>Account number / payment details</dt><dd>${details}</dd></div></dl>
+   <div class="roma-payment-actions"><button class="roma-btn secondary tiny" type="button" data-edit-method="${methodId}">Edit details</button>
+     <button class="roma-btn warn tiny" type="button" data-delete-method="${methodId}">Delete method</button></div>
+ </article>`;
+}
+async function loadMethods(){
+ methods=R.check(await db.from('payment_methods').select('*').order('name'));
+ updatePackagePrerequisite();
+ const list=$('method-admin-list');
+ list.classList.add('roma-payment-methods');
+ list.innerHTML=methods.length?methods.map(renderPaymentMethod).join(''):
+   '<div class="roma-empty" style="grid-column:1/-1">No payment methods yet. Use the form above to add a bank or e-wallet account.</div>';
+ renderMethodChecks();
+}
+function updatePackagePrerequisite(){
+ const valid=methods.some(m=>m.is_active&&m.name?.trim()&&m.account_holder?.trim()&&m.account_details?.trim());
+ const notice=$('package-payment-prerequisite');
+ const form=$('service-form');
+ if(notice){notice.textContent=valid?'Payment method available. Select at least one active method below.':'Create an active payment method with account holder and account details before making packages.';notice.className=valid?'roma-note roma-success-note':'roma-note roma-warning-note';}
+ if(form?.elements){form.querySelector('button[type="submit"]').disabled=!valid;}
+}
 function methodReset(){const f=$('method-form');f.reset();f.elements.id.value='';f.elements.is_active.checked=true;$('method-qr-state').textContent='';}
 function editMethod(id){const m=methods.find(x=>x.id===id);if(!m)return;const f=$('method-form');f.elements.id.value=m.id;f.elements.name.value=m.name;f.elements.provider.value=m.provider;f.elements.holder.value=m.account_holder;f.elements.details.value=m.account_details;f.elements.instructions.value=m.instructions;f.elements.qr.value=m.qr_drive_file_id||'';$('method-qr-state').textContent=m.qr_drive_file_id?'QR image attached; upload another to replace it.':'No QR image attached.';f.elements.is_active.checked=m.is_active;tab('payments');f.scrollIntoView({behavior:'smooth'});}
-async function saveMethod(e){const f=e.currentTarget;const file=f.elements.qr_file.files[0];let parsed=String(f.elements.qr.value||'').trim();if(file){$('method-qr-state').textContent='Uploading QR image to Google Drive…';parsed=await R.uploadToDrive(file,'payment_qr');$('method-qr-state').textContent='QR image uploaded.';}const data={name:f.elements.name.value.trim(),provider:f.elements.provider.value.trim(),account_holder:f.elements.holder.value.trim(),account_details:f.elements.details.value.trim(),instructions:f.elements.instructions.value.trim(),qr_drive_file_id:parsed||null,is_active:f.elements.is_active.checked};const id=f.elements.id.value;
+async function saveMethod(e){const f=e.currentTarget;const file=f.elements.qr_file.files[0];let parsed=String(f.elements.qr.value||'').trim();if(file){$('method-qr-state').textContent='Uploading QR image to Google Drive…';parsed=await R.uploadToDrive(file,'payment_qr');$('method-qr-state').textContent='QR image uploaded.';}if(!f.elements.name.value.trim()||!f.elements.holder.value.trim()||!f.elements.details.value.trim())throw Error('Payment method name, account holder, and account details are required.');const data={name:f.elements.name.value.trim(),provider:f.elements.provider.value.trim(),account_holder:f.elements.holder.value.trim(),account_details:f.elements.details.value.trim(),instructions:f.elements.instructions.value.trim(),qr_drive_file_id:parsed||null,is_active:f.elements.is_active.checked};const id=f.elements.id.value;
 if(id)R.check(await db.from('payment_methods').update(data).eq('id',id));else R.check(await db.from('payment_methods').insert(data));R.notify('Payment method saved.','success');await loadMethods();methodReset();}
 async function loadBlocked(){blocked=R.check(await db.from('blocked_dates').select('*').order('event_date'));$('blocked-list').innerHTML=blocked.length?blocked.map(d=>`<div class="roma-booking">${R.datePH(d.event_date)} — ${R.esc(d.reason)} <button class="roma-btn secondary tiny" data-unblock="${d.event_date}">Unblock</button></div>`).join(''):'<p class="roma-muted">No manually blocked dates.</p>';}
 async function loadImages(){imageRows=R.check(await db.from('site_images').select('*'));$('image-positions').innerHTML=imageSlots.map(([slot,label])=>{const row=imageRows.find(x=>x.slot_key===slot);return `<div class="roma-card"><h3>${R.esc(label)}</h3>${row?.drive_file_id?`<img class="roma-banner" src="${R.image(row.drive_file_id)}" alt="${R.esc(label)}">`:''}<form data-image-form="${slot}"><label class="roma-field">Upload image to Google Drive<input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"></label><input name="image" type="hidden" value="${R.esc(row?.drive_file_id||'')}"><label class="roma-field">Image title<input name="title" maxlength="140" value="${R.esc(row?.title||label)}"></label><label class="roma-field"><span><input name="active" type="checkbox" ${row?.is_active!==false?'checked':''}> Display this image</span></label><button class="roma-btn" type="submit">Save image</button></form></div>`}).join('');}
@@ -193,6 +242,7 @@ $('admin-login').addEventListener('submit',safe(async e=>{const f=e.currentTarge
 $('admin-logout').addEventListener('click',safe(async()=>{R.check(await db.auth.signOut());user=null;selectedBooking=null;await initialize();}));
 document.querySelectorAll('[data-admin-tab]').forEach(b=>b.addEventListener('click',()=>{tab(b.dataset.adminTab);if(b.dataset.adminTab==='customers')loadCustomers().catch(e=>R.notify(R.readable(e),'error'));}));
 $('refresh-customers').addEventListener('click',safe(loadCustomers));
+$('drive-health-test')?.addEventListener('click',safe(async()=>{const el=$('drive-health-result');el.textContent='Checking Google Drive gateway…';const {data,error}=await db.functions.invoke('roma-drive-media',{body:{action:'health'}});if(error)throw error;if(!data?.ok)throw Error(data?.error||'Google Drive gateway unavailable');el.textContent='Google Drive gateway connected: '+(data.root_folder_name||'Business folder')+'.';R.notify('Drive gateway connected.','success');}));
 $('customer-search').addEventListener('input',()=>{
   window.clearTimeout(customerSearchTimer);
   customerSearchTimer=window.setTimeout(()=>{customerOffset=0;loadCustomers();},300);
@@ -219,7 +269,7 @@ if(d.deleteTransaction){const b=bookings.find(b=>b.id===d.deleteTransaction);con
 if(d.driveProof){await R.viewDriveProof(d.driveProof);return;}if(d.fileBucket&&d.filePath){await signed(d.fileBucket,d.filePath);return;}
 if(d.viewService){const detail=$('package-detail-'+d.viewService);if(detail)detail.hidden=!detail.hidden;return;}if(d.editService){editService(d.editService);return;}
 if(d.editMethod){editMethod(d.editMethod);return;}
-if(d.deleteService){const svc=services.find(x=>x.id===d.deleteService);if(window.confirm(`Delete package "${svc.name}"? Packages with past bookings cannot be deleted.`)){R.check(await db.from('services').delete().eq('id',d.deleteService));await loadServices();R.notify('Package deleted.','success')}return;}
+if(d.deleteService){const svc=services.find(x=>x.id===d.deleteService);if(window.confirm(`Delete package "${svc.name}"? Packages with past bookings cannot be deleted.`)){await R.rpc('roma_admin_delete_package',{p_service:d.deleteService});await loadServices();R.notify('Package deleted.','success')}return;}
 if(d.deleteMethod){const m=methods.find(x=>x.id===d.deleteMethod);if(window.confirm(`Delete payment method "${m.name}"? Existing payment records may prevent deletion.`)){R.check(await db.from('payment_methods').delete().eq('id',d.deleteMethod));await loadMethods();R.notify('Payment method deleted.','success')}return;}
 if(d.unblock){R.check(await db.from('blocked_dates').delete().eq('event_date',d.unblock));await loadBlocked();R.notify('Date unblocked.','success');return;}
 if(d.payApprove){await R.rpc('review_booking_payment',{p_payment:d.payApprove,p_approve:true,p_rejection:null});R.notify('Payment verified.','success');await loadBookings();return;}

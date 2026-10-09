@@ -1,0 +1,152 @@
+/* Creations by Roma Apuyan — studio-wide visual system, release 14.
+   Preserves the original RA wordmark / burgundy-black / blush branding. */
+:root { --roma-ink:#100b10; --roma-rose:#edb2c7; --roma-rose-bright:#f6c8d9;
+  --roma-panel:#1b131c; --roma-panel-raised:#231721; --roma-line:rgba(244,188,207,.17);
+  --roma-text:#faf2f5; --roma-muted:#bdaab8; --roma-serif:'Cormorant Garamond',Georgia,serif;
+  --roma-sans:'DM Sans',Arial,sans-serif; }
+body.roma-app { background: radial-gradient(ellipse 72% 35% at 96% -4%,rgba(139,54,98,.17),transparent 75%),
+  radial-gradient(ellipse 35% 28% at 3% 61%,rgba(91,42,67,.1),transparent 90%),#100b10;
+ color:var(--roma-text); font-family:var(--roma-sans);font-size:14px;line-height:1.6;
+ -webkit-font-smoothing:antialiased; }
+.roma-app a { color:var(--roma-rose-bright); }
+.roma-top{position:sticky;top:0;z-index:60;background:rgba(14,10,15,.96);border-bottom:1px solid var(--roma-line);
+ box-shadow:0 10px 40px rgba(0,0,0,.18);padding:0 clamp(20px,3vw,64px);backdrop-filter:blur(14px);}
+.roma-top-inner {max-width:1700px;min-height:82px;margin:auto;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px 24px;padding:12px 0;}
+.roma-logo.brand {display:inline-flex;align-items:center;gap:15px;min-width:210px;flex-shrink:0;}
+.roma-logo .brand-mark {font-size:48px;letter-spacing:-.13em;}
+.roma-logo .brand-text {font-size:9px;letter-spacing:.27em;color:#f6dae3;}
+.roma-top-links {display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:7px;}
+.roma-top-links a {font-size:12px!important;font-weight:600!important;letter-spacing:.015em!important;white-space:nowrap;
+ color:#deccd6!important;text-decoration:none;padding:11px 12px;border-radius:10px;transition:.15s background,.15s color;}
+.roma-top-links a:hover,.roma-top-links a[aria-current='page'] {background:rgba(245,177,203,.11);color:#ffe2ed!important;}
+.roma-top-links .roma-btn {border-radius:10px;padding:9px 15px;height:auto;}
+.roma-wrap {width:100%;max-width:1760px;margin:0 auto;padding:clamp(36px,4vw,66px) clamp(20px,4vw,76px) 90px;min-height:calc(100vh - 190px);}
+.roma-wrap > .roma-eyebrow, .roma-wrap > h1,.roma-wrap > .roma-lead {text-align:center;margin-inline:auto;}
+.roma-wrap > .roma-eyebrow {font-size:10px;letter-spacing:.3em;margin:0 auto 10px;color:var(--roma-rose-bright);}
+.roma-wrap > h1 {font:500 clamp(55px,5.2vw,91px)/.98 var(--roma-serif);max-width:1300px;letter-spacing:-.03em;margin:0 auto 13px;}
+.roma-wrap > .roma-lead {color:var(--roma-muted);font-size:15px;max-width:740px;margin-bottom:30px;}
+.roma-wrap > #admin-console > #admin-user {text-align:center;margin-top:12px;margin-bottom:20px;font-size:12px;}
+.roma-wrap > .roma-alert {max-width:1180px;margin:18px auto;}
+.roma-wrap > #admin-console > .roma-toolbar, .roma-wrap > #client-view > .roma-toolbar {justify-content:center;width:100%;max-width:1440px;margin:25px auto 48px;
+ padding:0 6px 14px;overflow-x:auto;}
+.roma-toolbar .roma-tab {min-height:45px;height:auto;padding:11px 19px;border:1px solid var(--roma-line);border-radius:13px;
+ color:#e8d2dd;background:rgba(32,21,32,.68);font:600 12px/1.3 var(--roma-sans);transition:background .2s,transform .2s,border-color .2s;}
+.roma-toolbar .roma-tab:hover{background:#342030;border-color:rgba(244,187,211,.55);transform:translateY(-1px);}
+.roma-toolbar .roma-tab.active {background:linear-gradient(135deg,#f5c4d6,#eda6c0);border-color:#f5c4d6;color:#2c1423;box-shadow:0 4px 20px rgba(237,166,192,.12);}
+.roma-wrap section[id^='admin-'] > h2,.roma-wrap section[id^='admin-'] > .roma-flex:first-child h2,
+.roma-wrap #client-view h2,.roma-wrap #auth-view > h2 {font:500 clamp(36px,3vw,55px)/1 var(--roma-serif);
+ text-align:center;letter-spacing:-.025em;margin:0 0 26px;}
+.roma-wrap #admin-requests > .roma-flex:first-child,.roma-wrap #admin-customers > .roma-flex:first-child,
+.roma-wrap #admin-images > .roma-flex:first-child {justify-content:center;gap:18px;flex-wrap:wrap;margin:0 auto 28px;}
+.roma-wrap #admin-requests > .roma-flex:first-child h2,.roma-wrap #admin-customers > .roma-flex:first-child h2 {margin:0;}
+.roma-wrap #admin-images > .roma-flex:first-child {margin-top:-10px;}
+.roma-wrap #admin-images > .roma-lead,.roma-wrap #admin-customers > p.roma-muted{text-align:center;margin-inline:auto;}
+.roma-app h2,.roma-app h3 {color:var(--roma-text);}
+.roma-card {background:linear-gradient(150deg,rgba(36,24,35,.98),rgba(23,17,25,.98));
+ border:1px solid var(--roma-line);border-radius:22px;box-shadow:0 18px 46px rgba(0,0,0,.12);padding:clamp(22px,2.2vw,34px);}
+.roma-app .roma-field {font:500 12px/1.5 var(--roma-sans);color:#ddc7d3;gap:7px;margin-bottom:17px;}
+.roma-app .roma-field input:not([type='checkbox']),.roma-app .roma-field select,.roma-app .roma-field textarea,
+.roma-search{background:#130e16;color:#fff5f9;border:1px solid rgba(240,183,206,.26);border-radius:12px;
+ min-height:48px;font:500 14px/1.45 var(--roma-sans);padding:12px 14px;}
+.roma-app .roma-field textarea{min-height:96px;}
+.roma-app .roma-field input:focus-visible,.roma-app .roma-field textarea:focus-visible,.roma-app .roma-field select:focus-visible{
+ outline:none;border-color:#f2b6cd;box-shadow:0 0 0 3px rgba(245,183,205,.16);}
+.roma-btn{background:#f1b4c9;border:1px solid #f4bed1;border-radius:12px;min-height:44px;padding:11px 18px;
+ color:#25121f;font:700 12px/1.25 var(--roma-sans);transition:background .15s,transform .15s;}
+.roma-btn:not(:disabled):hover{background:#ffd8e6;transform:translateY(-1px);filter:none;}
+.roma-btn.secondary{background:rgba(240,179,205,.045);border-color:rgba(242,174,201,.45);color:#f3c7da;}
+.roma-btn.secondary:hover{background:rgba(240,179,205,.15);}
+.roma-btn.warn{background:#704053;color:white;border-color:#9c6173;}
+.roma-pill {padding:6px 11px;border-radius:99px;background:#281b28;border:1px solid rgba(242,178,202,.35);}
+.roma-note,.roma-booking,.roma-calendar {background:#231824;border-color:var(--roma-line);border-radius:14px;}
+.roma-section-stack {gap:42px;max-width:1550px;margin:auto;}
+.roma-centered-form {max-width:910px;width:100%;margin-inline:auto;}
+.roma-centered-form-wide{max-width:1000px;}
+#admin-services > .roma-section-stack > div:last-child > h3 {text-align:center;font-size:39px;margin-bottom:22px;}
+#admin-payments .roma-centered-form form{gap:16px 24px;}
+#admin-payments .roma-centered-form form .roma-field{margin:0;}
+#admin-payments .roma-centered-form form .roma-btn{justify-self:start;}
+.roma-package-grid{max-width:1500px;margin-inline:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:22px;}
+.roma-package-tile{border-radius:19px;min-height:240px;}
+.roma-package-tile .roma-banner{border-radius:14px;height:185px;}
+.roma-layout{grid-template-columns:minmax(260px,360px) minmax(0,1fr);max-width:1560px;margin-inline:auto;gap:24px;}
+#auth-view .roma-layout{grid-template-columns:minmax(270px,420px) minmax(320px,620px);justify-content:center;}
+#admin-booking-list,.roma-stack{min-width:0;}
+#admin-booking-details,#my-booking-details{min-width:0;}
+#new-booking{max-width:860px;margin:30px auto;padding:clamp(24px,3vw,40px);}
+#admin-calendar{max-width:1480px;margin-inline:auto;}
+#calendar-admin,#calendar-customer{max-width:1180px;margin-inline:auto;}
+#admin-calendar > #block-form,#admin-calendar > .roma-card{max-width:900px;margin-inline:auto;}
+#admin-images #image-positions{max-width:1540px;margin:auto;grid-template-columns:repeat(auto-fill,minmax(min(100%,325px),1fr));gap:22px;}
+.roma-table-wrap{background:#1d1420;border:1px solid var(--roma-line);border-radius:18px;overflow:auto;}
+.roma-table th{background:#342033;color:#ffe3ee;font-size:11px;letter-spacing:.04em;text-transform:uppercase;}
+.roma-table td,.roma-table th{padding:15px 18px;}
+#customer-search{max-width:460px;}
+#admin-customers > .roma-field{max-width:460px;margin:0 auto 23px!important;}
+.roma-alert.error{background:#49222e;border-color:#a95d74;color:#ffe7ee;}
+.roma-loading{min-height:180px;}
+.roma-footer{margin-top:auto;padding:30px 20px 38px;text-align:center;border-top:1px solid var(--roma-line);
+ background:rgba(20,13,20,.7);font-size:12px;color:#d9becc;letter-spacing:.015em;}
+.roma-footer .roma-footer-main{display:block;font-family:var(--roma-serif);font-size:25px;color:#f4d6e1;line-height:1.2;margin-bottom:6px;}
+.roma-footer .roma-partner {display:block;margin-top:5px;font-size:12px;color:#d5a7ba;}
+/* Premium payment-method directory */
+.roma-payment-methods {max-width:1140px;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;}
+.roma-payment-card {display:flex;flex-direction:column;min-height:245px;padding:26px;border:1px solid rgba(236,175,201,.22);
+ border-radius:20px;background:linear-gradient(135deg,#281b29,#1b141e 75%);box-shadow:0 14px 36px rgba(0,0,0,.12);}
+.roma-payment-head {display:flex;align-items:center;gap:14px;margin-bottom:20px;min-width:0;}
+.roma-payment-monogram {display:grid;place-items:center;flex:0 0 52px;width:52px;height:52px;border-radius:14px;
+ background:linear-gradient(145deg,#f5c5d8,#c78ba7);color:#311826;font:600 26px var(--roma-serif);}
+.roma-payment-meta {flex:1;min-width:0;}
+.roma-payment-name{font:600 27px/1.05 var(--roma-serif);margin:0;color:#fae6ef;overflow-wrap:anywhere;}
+.roma-payment-provider{margin:5px 0 0;color:#bca7b5;font-size:12px;}
+.roma-payment-status {display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:6px 10px;white-space:nowrap;
+ border:1px solid #86647c;background:#302230;color:#f0c1d6;font-size:10px;font-weight:700;}
+.roma-payment-status.is-active{background:rgba(54,100,77,.22);border-color:rgba(104,165,128,.4);color:#b5e3c5;}
+.roma-payment-status::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+.roma-payment-details {display:grid;grid-template-columns:1fr;gap:13px;padding-top:15px;border-top:1px solid rgba(246,191,211,.13);flex:1;}
+.roma-payment-details div{min-width:0;}
+.roma-payment-details dt{font-size:10px;letter-spacing:.11em;color:#bc9dae;text-transform:uppercase;margin:0 0 4px;}
+.roma-payment-details dd{margin:0;font-size:13px;color:#fff4f8;overflow-wrap:anywhere;white-space:pre-wrap;}
+.roma-payment-actions {display:flex;gap:9px;flex-wrap:wrap;margin-top:24px;padding-top:17px;border-top:1px solid rgba(246,191,211,.12);}
+.roma-payment-actions .roma-btn{margin:0;flex:1;min-width:108px;}
+/* High-design download page */
+.roma-download-wrap{max-width:1520px;margin:0 auto;padding:clamp(45px,6vw,95px) clamp(20px,4vw,76px) 100px;min-height:calc(100vh - 176px);}
+.roma-download-hero {text-align:center;max-width:840px;margin:0 auto 50px;}
+.roma-download-hero .roma-eyebrow{letter-spacing:.25em;font-size:10px;}
+.roma-download-hero h1{font:500 clamp(60px,7vw,106px)/.92 var(--roma-serif);letter-spacing:-.045em;margin:18px auto 25px;}
+.roma-download-hero h1 em{font-weight:400;color:#f2acc8;}
+.roma-download-hero p{max-width:590px;margin:auto;color:#cbb9c4;font-size:15px;}
+.roma-download-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:25px;max-width:1160px;margin:0 auto;}
+.roma-download-card {display:flex;flex-direction:column;min-height:398px;padding:clamp(30px,4vw,54px);border:1px solid rgba(242,188,210,.21);
+ border-radius:26px;background:radial-gradient(ellipse 95% 65% at 100% 0%,rgba(128,65,96,.18),transparent 80%),#1d141e;
+ box-shadow:0 24px 65px rgba(0,0,0,.2);position:relative;overflow:hidden;}
+.roma-download-card::after{content:'';position:absolute;right:-62px;bottom:-112px;width:265px;height:265px;border:1px solid rgba(244,179,204,.14);border-radius:50%;pointer-events:none;}
+.roma-download-icon{display:grid;place-items:center;width:65px;height:65px;border-radius:18px;border:1px solid rgba(239,176,202,.36);
+ color:#fac9da;background:#38233a;margin-bottom:27px;font:500 32px var(--roma-serif);}
+.roma-download-card .roma-download-label{font:700 10px/1.5 var(--roma-sans);color:#e2aac0;letter-spacing:.22em;text-transform:uppercase;}
+.roma-download-card h2 {font:500 clamp(36px,3.6vw,52px)/1 var(--roma-serif);margin:9px 0 18px;max-width:400px;}
+.roma-download-card p {font-size:14px;line-height:1.85;color:#c8b3c1;max-width:405px;margin:0 0 36px;}
+.roma-download-card .roma-download-tag{align-self:flex-start;margin-top:auto;padding:12px 19px;border-radius:99px;border:1px solid rgba(239,171,200,.45);
+ color:#f0bfd2;background:#352435;font-size:11px;font-weight:700;letter-spacing:.06em;}
+.roma-download-bottom{margin:42px auto 0;max-width:850px;text-align:center;color:#a995a4;font-size:12px;}
+/* Original homepage keeps its art direction; align partner treatment & navigation. */
+body:not(.roma-app) .site-footer .roma-partner {display:block;margin-top:9px;font-family:var(--roma-sans);font-size:12px;
+ color:#e8b7ca;letter-spacing:.015em;}
+body:not(.roma-app) .nav-links a[href='booking.html'] {color:#f2bdd0;}
+@media(max-width:1100px){.roma-top-inner{flex-direction:column;align-items:center;gap:12px;padding-block:16px;}
+ .roma-top-links{justify-content:center;gap:4px;}.roma-wrap{padding-inline:24px;}
+ .roma-toolbar{flex-wrap:wrap;overflow:visible!important;gap:8px;}.roma-layout{grid-template-columns:1fr;}
+ #auth-view .roma-layout{grid-template-columns:1fr 1fr;}}
+@media(max-width:780px){.roma-download-grid{grid-template-columns:1fr;max-width:600px;}
+ .roma-download-card{min-height:340px;}.roma-download-hero h1{font-size:66px;}
+ #auth-view .roma-layout{grid-template-columns:1fr;max-width:680px;}
+ #admin-payments .roma-centered-form form{display:flex;flex-direction:column;}
+ .roma-top-links{flex-wrap:nowrap;overflow-x:auto;max-width:100%;justify-content:flex-start;scrollbar-width:thin;padding-bottom:6px;}
+ .roma-wrap{padding:30px 17px 70px;}.roma-wrap > h1{font-size:56px;}
+ .roma-wrap section[id^='admin-'] > h2 {font-size:40px;}.roma-payment-card{padding:22px;}}
+@media(max-width:480px){.roma-top{padding-inline:14px;}.roma-logo.brand{min-width:0;}.roma-logo .brand-mark{font-size:42px;}
+ .roma-toolbar .roma-tab{font-size:11px;min-height:40px;padding:10px 12px;}
+ .roma-download-hero h1{font-size:58px;}.roma-download-card h2{font-size:38px;}
+ .roma-download-card{padding:28px;}.roma-2cols{grid-template-columns:1fr;}}
+/* Keep a single payment method centered and substantial, rather than a tiny grid tile. */
+.roma-payment-methods:has(> .roma-payment-card:only-child){grid-template-columns:minmax(0,min(100%,610px));justify-content:center;}

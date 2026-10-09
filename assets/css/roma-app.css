@@ -91,3 +91,38 @@ body.roma-app{background:radial-gradient(ellipse at 82% 0%,rgba(158,61,105,.13),
 @media(max-width:750px){#admin-payments .roma-centered-form form{display:flex;flex-direction:column;gap:12px}.roma-package-grid{grid-template-columns:1fr}}
 
 #my-booking-details form,#admin-booking-details form{width:100%;max-width:800px;margin:20px auto}
+
+/* Stage 13 — polished responsive layout, consistent visual rhythm */
+body.roma-app{font-family:'DM Sans',Arial,sans-serif;font-size:14px;letter-spacing:.005em;line-height:1.62}
+.roma-top{box-shadow:0 10px 32px rgba(0,0,0,.28)}
+.roma-top-inner{max-width:none;min-height:78px;column-gap:clamp(14px,2vw,32px)}
+.roma-logo.brand{min-width:190px}
+.roma-wrap{max-width:none;width:100%;padding-top:clamp(25px,3vw,54px);padding-inline:clamp(18px,3.2vw,68px)}
+.roma-app h1{font-size:clamp(36px,3.5vw,56px);letter-spacing:-.025em;line-height:1.03;margin-bottom:12px}
+.roma-app h2{font-size:clamp(24px,2vw,34px);line-height:1.13;margin:0 0 19px}
+.roma-app h3{font-size:clamp(20px,1.6vw,27px);line-height:1.17}
+.roma-toolbar{margin:20px 0 35px;gap:9px;scrollbar-width:thin}
+.roma-toolbar .roma-tab{height:39px;min-height:39px;padding:8px 16px;border-radius:12px}
+.roma-card{border-radius:17px;padding:clamp(20px,2.1vw,32px);box-shadow:0 6px 30px rgba(0,0,0,.10)}
+.roma-centered-form{max-width:820px;margin-inline:auto}
+.roma-centered-form-wide{max-width:1100px}
+.roma-field{margin-bottom:13px}
+.roma-field input,.roma-field select,.roma-field textarea{min-height:43px}
+.roma-section-stack{gap:38px}
+.roma-package-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,310px),1fr));gap:18px}
+.roma-layout{grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:20px}
+.roma-package-tile{min-width:0}
+#admin-summary{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+#admin-requests,#admin-services,#admin-payments,#admin-calendar,#admin-images,#admin-customers{width:100%;max-width:100%}
+.roma-warning-note{border-left-color:#e8bd87;background:#302419}
+.roma-success-note{border-left-color:#78ac87;background:#1b3228}
+@media(max-width:900px){.roma-layout{grid-template-columns:1fr}.roma-top-inner{grid-template-columns:1fr;gap:10px}.roma-top-links{justify-content:flex-start;overflow-x:auto;width:100%;padding-bottom:8px}.roma-wrap{padding:26px 18px 70px}}
+@media(max-width:600px){.roma-app h1{font-size:39px}.roma-top-links{gap:16px}.roma-tab{font-size:11px}.roma-section-stack{gap:22px}.roma-card{padding:19px}}
+
+/* Stage 13 detail polish */
+#admin-images #image-positions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:18px}
+#admin-images #image-positions .roma-card h3{font-size:25px}
+#admin-images #image-positions .roma-card{display:flex;flex-direction:column;min-width:0}
+#admin-images #image-positions .roma-card form{display:flex;flex-direction:column;flex:1;gap:10px}
+#admin-images #image-positions .roma-card .roma-btn{align-self:flex-start;margin-top:auto}
+#admin-services .roma-centered-form,#admin-payments .roma-centered-form{box-shadow:0 8px 45px rgba(0,0,0,.18)}
