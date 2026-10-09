@@ -1,10 +1,11 @@
 (() => {
 'use strict';
 const R=window.Roma, db=R.client, $=R.qs;
+let customerRows=[], customerRoles=[];
 let user, bookings=[],selectedBooking=null,services=[],methods=[],options=[],serviceMethodLinks=[], blocked=[],imageRows=[],calendar=null;
 const imageSlots=[['hero_primary','Homepage — main photo','hero'],['hero_secondary','Homepage — second photo','hero'], ...Array.from({length:6},(_,i)=>[`gallery_${i+1}`,`Gallery — photo ${i+1}`,'gallery']),['service_portraits','Service card — portraits','website'],['service_events','Service card — events','website'],['service_films','Service card — films','website'],['service_editorial','Service card — editorial','website']];
 function safe(fn){return async e=>{try{R.clear();if(e?.type==='submit'&&e.preventDefault)e.preventDefault();await fn(e)}catch(err){R.notify(R.readable(err),'error')}}}
-function tab(which){document.querySelectorAll('[data-admin-tab]').forEach(b=>b.classList.toggle('active',b.dataset.adminTab===which));['requests','services','payments','calendar','images'].forEach(n=>$('admin-'+n).hidden=n!==which);}
+function tab(which){document.querySelectorAll('[data-admin-tab]').forEach(b=>b.classList.toggle('active',b.dataset.adminTab===which));['requests','services','payments','calendar','images','customers'].forEach(n=>$('admin-'+n).hidden=n!==which);}
 async function initialize(){user=await R.loggedIn();if(!user){$('admin-auth').hidden=false;$('admin-console').hidden=true;$('admin-logout').hidden=true;return;}
 if(!(await R.isAdmin(user))){$('admin-auth').hidden=false;$('admin-console').hidden=true;throw Error('This account does not have the Super Administrator role.');}
 $('admin-auth').hidden=true;$('admin-console').hidden=false;$('admin-logout').hidden=false;$('admin-user').textContent='Signed in as '+user.email+' · Super Administrator';
@@ -13,6 +14,33 @@ if(!calendar)calendar=window.RomaCalendar.mount('calendar-admin',{mode:'admin',f
 const busy=await R.rpc('unavailable_booking_dates',{p_start:start,p_end:end});
 return {busy:busy.map(x=>x.event_date),events:bookings.filter(b=>['approved','completed'].includes(b.status)).map(b=>b.event_date)};
 }});else calendar.refresh();}
+async function loadCustomers(){
+  customerRows=R.check(await db.from('profiles').select('user_id,full_name,email,phone,deleted_at').is('deleted_at',null).order('created_at',{ascending:false}).limit(500));
+  customerRoles=R.check(await db.from('account_roles').select('user_id,role'));
+  renderCustomers();
+}
+function renderCustomers(){
+  const term=($('customer-search').value||'').trim().toLowerCase();
+  const filtered=customerRows.filter(c=>[c.full_name,c.email,c.phone].some(x=>String(x||'').toLowerCase().includes(term)));
+  const roleOf=(id)=>customerRoles.find(r=>r.user_id===id)?.role||'customer';
+  $('customer-list').innerHTML=filtered.length?filtered.map(c=>{
+    const role=roleOf(c.user_id);
+    const canDelete=c.user_id!==user.id && role!=='super_admin';
+    return `<tr><td>${R.esc(c.full_name||'Customer')}</td><td>${R.esc(c.email)}</td><td>${R.esc(c.phone)}</td><td>${R.esc(role)}</td><td>${canDelete?`<button class="roma-btn warn tiny" data-delete-user="${c.user_id}" type="button">Delete User</button>`:'Protected administrator'}</td></tr>`;
+  }).join(''):'<tr><td colspan="5">No matching customers.</td></tr>';
+}
+async function deleteCustomer(userId){
+  const target=customerRows.find(c=>c.user_id===userId);
+  if(!target)throw Error('Customer not found. Refresh the list.');
+  const label=target.email||target.full_name||userId;
+  const response=window.prompt(`Delete the customer account ${label}?\n\nRemoves login access and private ID/payment-proof files, while preserving booking and payment records.\n\nType DELETE to confirm:`);
+  if(response!=='DELETE')return;
+  const {data,error}=await db.functions.invoke('roma-user-admin',{body:{action:'delete_customer',user_id:userId}});
+  if(error)throw new Error(data?.error||error.message||'Unable to delete the customer');
+  if(data?.error)throw Error(data.error);
+  R.notify('Customer login access removed. Booking history preserved.','success');
+  await loadCustomers();
+}
 async function loadBookings(){bookings=R.check(await db.from('bookings').select('*').order('created_at',{ascending:false}).limit(250));const summary=[['Recent bookings',bookings.length],['Awaiting approval',bookings.filter(b=>b.status==='pending_approval').length],['Verified payments',R.money(bookings.reduce((sum,b)=>sum+Number(b.paid_centavos),0))],['Remaining balances',R.money(bookings.filter(b=>['approved','completed'].includes(b.status)).reduce((sum,b)=>sum+Number(b.total_centavos-b.paid_centavos),0))]];$('admin-summary').innerHTML=summary.map(([label,value])=>`<div class="roma-card"><span class="roma-muted">${label} (shown records)</span><h3>${value}</h3></div>`).join('');
 $('admin-booking-list').innerHTML=bookings.length?bookings.map(b=>`<div class="roma-booking"><button data-select-booking="${b.id}"><strong>${R.esc(b.reference_number)}</strong><br>${R.esc(b.service_name_snapshot)} · ${R.datePH(b.event_date)}<br><span class="roma-pill">${R.esc(b.status.replaceAll('_',' '))}</span><br><small>${R.money(b.total_centavos)} · Paid ${R.money(b.paid_centavos)}</small></button></div>`).join(''):'<div class="roma-empty">No submitted or draft bookings yet.</div>';
 if(selectedBooking&&bookings.some(x=>x.id===selectedBooking))await showBooking(selectedBooking);if(calendar)calendar.refresh();}
@@ -56,7 +84,9 @@ async function saveImage(e){const f=e.target;const slot=f.dataset.imageForm;cons
 R.notify('Image saved. Your public website will use this Google Drive image.','success');await loadImages();}
 $('admin-login').addEventListener('submit',safe(async e=>{const f=e.currentTarget;R.check(await db.auth.signInWithPassword({email:f.elements.email.value.trim(),password:f.elements.password.value}));await initialize();}));
 $('admin-logout').addEventListener('click',safe(async()=>{R.check(await db.auth.signOut());user=null;selectedBooking=null;await initialize();}));
-document.querySelectorAll('[data-admin-tab]').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.adminTab)));
+document.querySelectorAll('[data-admin-tab]').forEach(b=>b.addEventListener('click',()=>{tab(b.dataset.adminTab);if(b.dataset.adminTab==='customers')loadCustomers().catch(e=>R.notify(R.readable(e),'error'));}));
+$('refresh-customers').addEventListener('click',safe(loadCustomers));
+$('customer-search').addEventListener('input',renderCustomers);
 $('reload-bookings').addEventListener('click',safe(loadBookings));
 $('service-form').addEventListener('submit',safe(saveService));$('service-reset').addEventListener('click',serviceReset);
 $('method-form').addEventListener('submit',safe(saveMethod));$('method-reset').addEventListener('click',methodReset);
@@ -66,7 +96,7 @@ if(f.id==='offline-payment'){const b=bookings.find(b=>b.id===selectedBooking);aw
 if(f.id==='admin-message'){R.check(await db.from('booking_messages').insert({booking_id:selectedBooking,sender_id:user.id,message:f.elements.message.value.trim(),is_internal:f.elements.internal.checked}));R.notify('Message saved.','success');await showBooking(selectedBooking);}
 }));
 document.addEventListener('click',safe(async e=>{const btn=e.target.closest('button');if(!btn)return;
-const d=btn.dataset;if(d.selectBooking){await showBooking(d.selectBooking);return;}
+const d=btn.dataset;if(d.deleteUser){await deleteCustomer(d.deleteUser);return;}if(d.selectBooking){await showBooking(d.selectBooking);return;}
 if(d.adminPdf){const b=bookings.find(x=>x.id===d.adminPdf);const profile=R.check(await db.from('profiles').select('full_name,email,phone').eq('user_id',b.user_id).single());window.RomaPDF.build(b,profile);return;}
 if(d.fileBucket&&d.filePath){await signed(d.fileBucket,d.filePath);return;}
 if(d.editService){editService(d.editService);return;}

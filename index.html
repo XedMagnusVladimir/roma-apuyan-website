@@ -545,5 +545,11 @@
   <script defer src="assets/js/roma-common.js"></script>
   <script defer src="assets/js/drive-images.js?v=8"></script>
   <script defer src="assets/js/roma-home.js?v=8"></script>
+  <script>
+  // Handle redirects from older Supabase confirmation emails gracefully.
+  if (location.hash.includes('error_code=') || location.hash.includes('access_token=')) {
+    location.replace('/email-confirmed.html' + location.search + location.hash);
+  }
+  </script>
 </body>
 </html>

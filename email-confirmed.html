@@ -23,46 +23,108 @@
 <img class="confirm-logo" src="/assets/img/ra-logo-email.png" alt="Creations by Roma Apuyan original RA logo">
 <div class="confirm-symbol" id="confirm-symbol" aria-hidden="true">…</div>
 <h1 id="confirm-heading">Confirming your email…</h1>
-<p id="confirm-message">Please wait while we verify your account.</p>
+<p id="confirm-message">Open this page from your registration email, then confirm your account.</p>
 <small id="confirm-hint">Creations by Roma Apuyan</small>
-<a class="roma-btn" id="login-link" href="/booking.html" hidden>Go to Sign In</a>
+<div id="confirm-actions"><button class="roma-btn" type="button" id="confirm-button" hidden>Confirm My Email</button><a class="roma-btn secondary" id="login-link" href="/booking.html#login-form" hidden>Go to Sign In</a></div>
+<form id="resend-form" hidden style="margin:20px auto 0;max-width:370px"><label class="roma-field" for="resend-email" style="text-align:left">Email address<input type="email" id="resend-email" autocomplete="email" required placeholder="you@example.com"></label><button type="submit" class="roma-btn secondary">Send a new confirmation email</button></form>
 </section></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="/assets/js/roma-common.js"></script>
 <script>
-(async()=>{
- 'use strict';
- const title=document.getElementById('confirm-heading');
- const msg=document.getElementById('confirm-message');
- const hint=document.getElementById('confirm-hint');
- const sym=document.getElementById('confirm-symbol');
- const link=document.getElementById('login-link');
- const query=new URLSearchParams(location.search);
- const fragment=new URLSearchParams(location.hash.slice(1));
- const error=query.get('error_description')||fragment.get('error_description')||query.get('error')||fragment.get('error');
- const fromEmail=fragment.has('access_token')||query.has('code');
- function failed(message){title.textContent='We could not confirm this link';msg.textContent=message;hint.textContent='You can return to the booking page to request a new confirmation email.';sym.textContent='!';link.hidden=false;}
- if(error){failed(error);return;}
- if(!fromEmail){failed('Open the confirmation link from your registration email.');return;}
- try{
-   // The existing Supabase UMD client processes the callback fragment and stores the verified session.
-   const client=window.Roma.client;
-   const {data,error:sessionError}=await client.auth.getSession();
-   if(sessionError)throw sessionError;
-   if(!data.session)throw Error('The confirmation link may have expired.');
-   const {data:userResult,error:userError}=await client.auth.getUser();
-   if(userError||!userResult.user?.email_confirmed_at)throw(userError||Error('Email confirmation was not completed.'));
-   // The customer asked to go to the login screen, not straight into an authenticated account.
-   const signout=await client.auth.signOut({scope:'local'});
-   if(signout.error)throw signout.error;
-   window.history.replaceState(null,'',location.pathname);
-   title.textContent='Email successfully confirmed!';
-   msg.textContent='Your account is ready. Taking you to the sign-in page.';
-   hint.textContent='Redirecting in 3 seconds…';
-   sym.textContent='✓';
-   link.href='/booking.html?email_confirmed=1';link.hidden=false;
-   setTimeout(()=>location.replace('/booking.html?email_confirmed=1'),3000);
- }catch(e){failed(e?.message||'Please try confirming your account again.');}
+(() => {
+  'use strict';
+  const title=document.getElementById('confirm-heading');
+  const msg=document.getElementById('confirm-message');
+  const hint=document.getElementById('confirm-hint');
+  const sym=document.getElementById('confirm-symbol');
+  const button=document.getElementById('confirm-button');
+  const login=document.getElementById('login-link');
+  const resend=document.getElementById('resend-form');
+  const query=new URLSearchParams(window.location.search);
+  const hash=new URLSearchParams(window.location.hash.slice(1));
+  const tokenHash=query.get('token_hash');
+  const type=query.get('type');
+  const error=query.get('error_description')||hash.get('error_description')||query.get('error')||hash.get('error');
+  const client=window.Roma?.client;
+  const loginUrl='/booking.html?email_confirmed=1#login-form';
+
+  function fail(message){
+    title.textContent='Confirmation link needs attention';
+    msg.textContent=message;
+    sym.textContent='!';
+    hint.textContent='Enter your email below to request a fresh confirmation link, or sign in if you have already confirmed.';
+    login.hidden=false;
+    resend.hidden=false;
+  }
+  async function success(){
+    // The customer should see a sign-in screen, not an automatically signed-in session.
+    const {error:e}=await client.auth.signOut({scope:'local'});
+    if(e)throw e;
+    title.textContent='Your email is confirmed!';
+    msg.textContent='Your Creations by Roma Apuyan account is ready. Redirecting you to sign in.';
+    hint.textContent='Redirecting in 3 seconds…';
+    sym.textContent='✓';
+    button.hidden=true;
+    resend.hidden=true;
+    login.href=loginUrl;
+    login.hidden=false;
+    history.replaceState(null,'',window.location.pathname);
+    window.setTimeout(()=>window.location.replace(loginUrl),3000);
+  }
+
+  if(error){fail(error);}
+  else if(tokenHash && type==='email'){
+    // Strip the one-time token from the visible address without discarding it from memory.
+    history.replaceState(null,'',window.location.pathname);
+    title.textContent='One final confirmation';
+    msg.textContent='Click Confirm My Email to activate your account.';
+    hint.textContent='This confirmation is done securely on our website.';
+    sym.textContent='✉';
+    button.hidden=false;
+    button.addEventListener('click',async()=>{
+      button.disabled=true;
+      title.textContent='Confirming your email…';
+      msg.textContent='Please wait a moment.';
+      try{
+        const {error:e}=await client.auth.verifyOtp({token_hash:tokenHash,type:'email'});
+        if(e)throw e;
+        await success();
+      }catch(e){
+        button.hidden=true;
+        fail(e?.message||'This confirmation link may be expired. Request a new link.');
+      }
+    });
+  } else if(hash.has('access_token') || query.has('code')){
+    // Compatibility for older emails that used Supabase's direct confirmation link.
+    title.textContent='Checking your confirmation…';
+    (async()=>{
+      try {
+        if(query.has('code')){
+          const {error:e}=await client.auth.exchangeCodeForSession(query.get('code'));
+          if(e)throw e;
+        }
+        const {data,error:e}=await client.auth.getUser();
+        if(e||!data.user?.email_confirmed_at)throw e||new Error('This link is no longer valid.');
+        await success();
+      }catch(e){fail(e?.message||'This confirmation link has expired.');}
+    })();
+  }else{
+    fail('The confirmation link is missing or has expired. You can request a new email below.');
+  }
+
+  resend.addEventListener('submit',async(ev)=>{
+    ev.preventDefault();
+    const mail=document.getElementById('resend-email').value.trim();
+    const btn=resend.querySelector('button');
+    btn.disabled=true;
+    try{
+      const {error:e}=await client.auth.resend({type:'signup',email:mail,options:{emailRedirectTo:new URL('/email-confirmed.html',location.origin).href}});
+      if(e)throw e;
+      msg.textContent='If this account still needs confirmation, a new message will arrive shortly.';
+      hint.textContent='Open the latest email and use its confirmation button.';
+    }catch(e){msg.textContent=e?.message||'Unable to send a new confirmation email.';}
+    finally{btn.disabled=false;}
+  });
 })();
 </script>
 </body>
