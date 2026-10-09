@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Confirm your email — Creations by Roma Apuyan</title>
+<link rel="stylesheet" href="/assets/css/roma-app.css">
+<style>
+.confirm-outer{min-height:calc(100vh - 90px);padding:64px 16px;display:flex;align-items:center;justify-content:center}
+.confirm-card{width:min(100%,540px);padding:36px 28px;text-align:center;background:linear-gradient(150deg,#2b1b2b,#150d17);border:1px solid #67405a;border-radius:20px;box-shadow:0 24px 65px #0006}
+.confirm-logo{display:block;width:min(210px,70%);height:auto;margin:0 auto 18px}
+.confirm-symbol{height:74px;width:74px;border-radius:50%;border:2px solid #e9b1c6;background:#422334;color:#f0c1d2;display:grid;place-items:center;margin:0 auto 22px;font-size:36px}
+.confirm-card h1{font-size:clamp(32px,5vw,48px);margin:0 0 12px;color:#fff}
+.confirm-card p{color:#e1cbd8;margin:0 auto 22px;max-width:390px}
+.confirm-card small{color:#caaabe;display:block}
+.confirm-card .roma-btn{min-width:200px;margin-top:12px}
+</style>
+</head>
+<body class="roma-app">
+<header class="roma-top"><a class="roma-logo" href="/"><span class="roma-mark">RA</span><span>Creations by<br>Roma Apuyan</span></a></header>
+<main class="confirm-outer"><section class="confirm-card" aria-live="polite">
+<img class="confirm-logo" src="/assets/img/ra-logo-email.png" alt="Creations by Roma Apuyan original RA logo">
+<div class="confirm-symbol" id="confirm-symbol" aria-hidden="true">…</div>
+<h1 id="confirm-heading">Confirming your email…</h1>
+<p id="confirm-message">Please wait while we verify your account.</p>
+<small id="confirm-hint">Creations by Roma Apuyan</small>
+<a class="roma-btn" id="login-link" href="/booking.html" hidden>Go to Sign In</a>
+</section></main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/assets/js/roma-common.js"></script>
+<script>
+(async()=>{
+ 'use strict';
+ const title=document.getElementById('confirm-heading');
+ const msg=document.getElementById('confirm-message');
+ const hint=document.getElementById('confirm-hint');
+ const sym=document.getElementById('confirm-symbol');
+ const link=document.getElementById('login-link');
+ const query=new URLSearchParams(location.search);
+ const fragment=new URLSearchParams(location.hash.slice(1));
+ const error=query.get('error_description')||fragment.get('error_description')||query.get('error')||fragment.get('error');
+ const fromEmail=fragment.has('access_token')||query.has('code');
+ function failed(message){title.textContent='We could not confirm this link';msg.textContent=message;hint.textContent='You can return to the booking page to request a new confirmation email.';sym.textContent='!';link.hidden=false;}
+ if(error){failed(error);return;}
+ if(!fromEmail){failed('Open the confirmation link from your registration email.');return;}
+ try{
+   // The existing Supabase UMD client processes the callback fragment and stores the verified session.
+   const client=window.Roma.client;
+   const {data,error:sessionError}=await client.auth.getSession();
+   if(sessionError)throw sessionError;
+   if(!data.session)throw Error('The confirmation link may have expired.');
+   const {data:userResult,error:userError}=await client.auth.getUser();
+   if(userError||!userResult.user?.email_confirmed_at)throw(userError||Error('Email confirmation was not completed.'));
+   // The customer asked to go to the login screen, not straight into an authenticated account.
+   const signout=await client.auth.signOut({scope:'local'});
+   if(signout.error)throw signout.error;
+   window.history.replaceState(null,'',location.pathname);
+   title.textContent='Email successfully confirmed!';
+   msg.textContent='Your account is ready. Taking you to the sign-in page.';
+   hint.textContent='Redirecting in 3 seconds…';
+   sym.textContent='✓';
+   link.href='/booking.html?email_confirmed=1';link.hidden=false;
+   setTimeout(()=>location.replace('/booking.html?email_confirmed=1'),3000);
+ }catch(e){failed(e?.message||'Please try confirming your account again.');}
+})();
+</script>
+</body>
+</html>
