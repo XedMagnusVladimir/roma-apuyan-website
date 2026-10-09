@@ -99,6 +99,52 @@ function renderCustomers(){
   $('customers-prev').disabled=customerOffset===0;
   $('customers-next').disabled=customerOffset+CUSTOMERS_PAGE_SIZE>=customerTotal;
 }
+async function deleteCustomer(userId){
+  const target=customerRows.find(c=>c.user_id===userId);
+  if(!target)throw Error('This customer is not on the current page. Click Refresh customers and try again.');
+  if(!user || target.user_id===user.id || target.role==='super_admin')throw Error('Super Administrator accounts are protected.');
+  const label=target.email||target.full_name||'this customer';
+  const confirmation=window.prompt(`Delete the account for ${label}?\n\nThis will revoke their sign-in access and remove private ID and payment proof uploads. Booking and payment history is kept.\n\nType DELETE to confirm:`);
+  if(confirmation===null)return;
+  if(confirmation.trim()!=='DELETE'){
+    R.notify('Deletion cancelled. Type DELETE exactly to confirm an account deletion.','error');
+    return;
+  }
+  const button=Array.from(document.querySelectorAll('button[data-delete-user]')).find(b=>b.dataset.deleteUser===userId);
+  const oldText=button?.textContent;
+  if(button){button.disabled=true;button.textContent='Deleting…';}
+  const state=$('customer-directory-state');
+  if(state)state.textContent='Removing the selected customer account…';
+  try{
+    // This server-side Edge Function checks the caller's verified access token and
+    // super_admin role. No privileged credentials are exposed to the browser.
+    const {data,error}=await db.functions.invoke('roma-user-admin',{
+      body:{action:'delete_customer',user_id:userId}
+    });
+    if(error){
+      let detail=data?.error || error.message || 'Unable to delete this account.';
+      // A function may return JSON with a helpful error body on a non-2xx status.
+      try{
+        if(error.context && typeof error.context.json==='function'){
+          const body=await error.context.json();
+          if(body?.error)detail=body.error;
+        }
+      }catch(_ignored){}
+      throw Error(detail);
+    }
+    if(data?.error)throw Error(data.error);
+    if(data?.ok!==true)throw Error('The deletion service did not confirm that the account was removed.');
+    // Reload the directory from Supabase after successful deletion.
+    if(customerRows.length===1 && customerOffset>0)customerOffset=Math.max(0,customerOffset-CUSTOMERS_PAGE_SIZE);
+    await loadCustomers();
+    R.notify(data.warning ? 'Account deleted. '+data.warning : 'Customer account deleted. Sign-in access revoked and booking history preserved.','success');
+  }catch(err){
+    if(state)state.textContent='Customer deletion failed: '+R.readable(err);
+    throw err;
+  }finally{
+    if(button?.isConnected){button.disabled=false;button.textContent=oldText;}
+  }
+}
 async function loadBookings(){bookings=R.check(await db.from('bookings').select('*').order('created_at',{ascending:false}).limit(250));const summary=[['Recent bookings',bookings.length],['Awaiting approval',bookings.filter(b=>b.status==='pending_approval').length],['Verified payments',R.money(bookings.reduce((sum,b)=>sum+Number(b.paid_centavos),0))],['Remaining balances',R.money(bookings.filter(b=>['approved','completed'].includes(b.status)).reduce((sum,b)=>sum+Number(b.total_centavos-b.paid_centavos),0))]];$('admin-summary').innerHTML=summary.map(([label,value])=>`<div class="roma-card"><span class="roma-muted">${label} (shown records)</span><h3>${value}</h3></div>`).join('');
 $('admin-booking-list').innerHTML=bookings.length?bookings.map(b=>`<div class="roma-booking"><button data-select-booking="${b.id}"><strong>${R.esc(b.reference_number)}</strong><br>${R.esc(b.service_name_snapshot)} · ${R.datePH(b.event_date)}<br><span class="roma-pill">${R.esc(b.status.replaceAll('_',' '))}</span><br><small>${R.money(b.total_centavos)} · Paid ${R.money(b.paid_centavos)}</small></button></div>`).join(''):'<div class="roma-empty">No submitted or draft bookings yet.</div>';
 if(selectedBooking&&bookings.some(x=>x.id===selectedBooking))await showBooking(selectedBooking);if(calendar)calendar.refresh();}
