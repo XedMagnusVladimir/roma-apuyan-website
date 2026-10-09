@@ -10,6 +10,32 @@ window.Roma = (() => {
   const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const driveId = v => {const s=String(v||'').trim();const m=s.match(/\/file\/d\/([A-Za-z0-9_-]+)/)||s.match(/[?&]id=([A-Za-z0-9_-]+)/);const id=m?m[1]:s;return /^[A-Za-z0-9_-]{15,}$/.test(id)?id:''};
   const image = id => id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveId(id))}&sz=w1200` : '';
+  const sizeAllowed=5*1024*1024;
+  async function uploadToDrive(file,scope,bookingId){
+    if(!file) return null;
+    if(!['image/jpeg','image/png','image/webp','application/pdf'].includes(file.type)) throw Error('Choose a JPG, PNG, WebP or PDF file.');
+    if(file.size>sizeAllowed) throw Error('Google Drive upload size is limited to 5 MB per file.');
+    const base64=await new Promise((resolve,reject)=>{
+      const reader=new FileReader();reader.onerror=()=>reject(Error('Unable to read selected file.'));
+      reader.onload=()=>resolve(String(reader.result).split(',')[1]);reader.readAsDataURL(file);
+    });
+    const {data,error}=await client.functions.invoke('roma-drive-media',{
+      body:{action:'upload',scope,booking_id:bookingId||null,name:file.name,mime:file.type,base64}
+    });
+    if(error){let detail=error.message;try{const d=await error.context?.json?.();detail=d?.error||detail;}catch(_){}throw Error(detail||'Google Drive upload failed.');}
+    if(!data?.ok||!data?.file_id)throw Error(data?.error||'Google Drive did not confirm the upload.');
+    return data.file_id;
+  }
+  async function viewDriveProof(fileId){
+    const {data,error}=await client.functions.invoke('roma-drive-media',{body:{action:'read_proof',file_id:fileId}});
+    if(error||!data?.base64)throw Error(data?.error||error?.message||'Unable to open private payment proof.');
+    const raw=atob(data.base64);const arr=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+    const blob=new Blob([arr],{type:data.mime||'application/octet-stream'});
+    const u=URL.createObjectURL(blob);window.open(u,'_blank','noopener,noreferrer');setTimeout(()=>URL.revokeObjectURL(u),60000);
+  }
+  const readableDuration=minutes=>minutes%1440===0?`${minutes/1440} day(s)`:minutes%60===0?`${minutes/60} hour(s)`:`${minutes} minute(s)`;
+  const durationMinutes=(value,unit)=>{const mult={minutes:1,hours:60,days:1440}[unit];const n=Number(value)*mult;if(!Number.isInteger(n)||n<1||n>525600)throw Error('Duration must be between 1 minute and 365 days.');return n;};
   const datePH = value => value ? new Intl.DateTimeFormat('en-PH',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(value+'T12:00:00Z')) : '';
   const optionText = {full_discount:'Pay in full — 10% off', deposit_25:'25% down payment',after_service_plus_10:'Pay after service — +10%'};
   const readable = e => {
@@ -26,5 +52,5 @@ window.Roma = (() => {
   const rpc=async(name,args)=>check(await client.rpc(name,args));
   const query=async(p)=>check(await p);
   const qs=(id)=>document.getElementById(id);
-  return {client,money,esc,driveId,image,datePH,optionText,readable,check,notify,clear,loggedIn,isAdmin,rpc,query,qs};
+  return {client,money,esc,driveId,image,datePH,optionText,readable,check,notify,clear,loggedIn,isAdmin,rpc,query,qs,uploadToDrive,viewDriveProof,readableDuration,durationMinutes};
 })();

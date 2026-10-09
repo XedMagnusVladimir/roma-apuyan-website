@@ -69,3 +69,25 @@ body.roma-app{background:radial-gradient(ellipse at 82% 0%,rgba(158,61,105,.13),
  .roma-toolbar{gap:7px}
  .roma-toolbar .roma-tab{font-size:11px;padding:10px 13px}
 }
+
+/* Stage 12 responsive full-width layouts and centered forms */
+.roma-wrap{max-width:none;width:100%;padding-left:clamp(18px,3vw,65px);padding-right:clamp(18px,3vw,65px)}
+.roma-top-inner{max-width:none;width:100%}
+.roma-section-stack{display:flex;flex-direction:column;gap:28px;width:100%}
+.roma-centered-form{width:100%;max-width:900px;margin-inline:auto}
+.roma-centered-form-wide{max-width:1040px}
+.roma-centered-form form{max-width:100%}
+.roma-package-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
+.roma-package-tile{display:flex;flex-direction:column;gap:8px}
+.roma-package-tile .roma-banner{width:100%;height:170px;object-fit:cover}
+.roma-tile-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.roma-package-details{padding-top:12px;border-top:1px solid var(--stroke);overflow-wrap:anywhere}
+#admin-booking-details{min-width:0}
+#new-booking{max-width:850px;margin:28px auto}
+#profile-form{margin-left:auto;margin-right:auto}
+#admin-payments .roma-centered-form form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px}
+#admin-payments .roma-centered-form form .roma-field{margin:0}
+#admin-payments .roma-centered-form form .roma-btn{justify-self:start}
+@media(max-width:750px){#admin-payments .roma-centered-form form{display:flex;flex-direction:column;gap:12px}.roma-package-grid{grid-template-columns:1fr}}
+
+#my-booking-details form,#admin-booking-details form{width:100%;max-width:800px;margin:20px auto}
