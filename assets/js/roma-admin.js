@@ -1,45 +1,74 @@
 (() => {
 'use strict';
 const R=window.Roma, db=R.client, $=R.qs;
-let customerRows=[], customerRoles=[];
+let customerRows=[], customerTotal=0, customerOffset=0, customerSearchTimer=null, customersRequest=0;
+const CUSTOMERS_PAGE_SIZE=50;
 let user, bookings=[],selectedBooking=null,services=[],methods=[],options=[],serviceMethodLinks=[], blocked=[],imageRows=[],calendar=null;
 const imageSlots=[['hero_primary','Homepage — main photo','hero'],['hero_secondary','Homepage — second photo','hero'], ...Array.from({length:6},(_,i)=>[`gallery_${i+1}`,`Gallery — photo ${i+1}`,'gallery']),['service_portraits','Service card — portraits','website'],['service_events','Service card — events','website'],['service_films','Service card — films','website'],['service_editorial','Service card — editorial','website']];
 function safe(fn){return async e=>{try{R.clear();if(e?.type==='submit'&&e.preventDefault)e.preventDefault();await fn(e)}catch(err){R.notify(R.readable(err),'error')}}}
 function tab(which){document.querySelectorAll('[data-admin-tab]').forEach(b=>b.classList.toggle('active',b.dataset.adminTab===which));['requests','services','payments','calendar','images','customers'].forEach(n=>$('admin-'+n).hidden=n!==which);}
-async function initialize(){user=await R.loggedIn();if(!user){$('admin-auth').hidden=false;$('admin-console').hidden=true;$('admin-logout').hidden=true;return;}
-if(!(await R.isAdmin(user))){$('admin-auth').hidden=false;$('admin-console').hidden=true;throw Error('This account does not have the Super Administrator role.');}
-$('admin-auth').hidden=true;$('admin-console').hidden=false;$('admin-logout').hidden=false;$('admin-user').textContent='Signed in as '+user.email+' · Super Administrator';
-await Promise.all([loadServices(),loadMethods(),loadBookings(),loadBlocked(),loadImages()]);
-if(!calendar)calendar=window.RomaCalendar.mount('calendar-admin',{mode:'admin',fetchMonth:async(start,end)=>{
-const busy=await R.rpc('unavailable_booking_dates',{p_start:start,p_end:end});
-return {busy:busy.map(x=>x.event_date),events:bookings.filter(b=>['approved','completed'].includes(b.status)).map(b=>b.event_date)};
-}});else calendar.refresh();}
+async function initialize(){
+  const loader=$('admin-loader');
+  loader.hidden=false;
+  $('admin-auth').hidden=true;
+  $('admin-console').hidden=true;
+  try{
+    user=await R.loggedIn();
+    if(!user){
+      $('admin-auth').hidden=false;
+      $('admin-logout').hidden=true;
+      return;
+    }
+    if(!(await R.isAdmin(user))){
+      $('admin-auth').hidden=false;
+      $('admin-logout').hidden=true;
+      throw Error('This account does not have the Super Administrator role.');
+    }
+    $('admin-console').hidden=false;
+    $('admin-logout').hidden=false;
+    $('admin-user').textContent='Signed in as '+user.email+' · Super Administrator';
+    await Promise.all([loadServices(),loadMethods(),loadBookings(),loadBlocked(),loadImages()]);
+    if(!calendar)calendar=window.RomaCalendar.mount('calendar-admin',{mode:'admin',fetchMonth:async(start,end)=>{
+      const busy=await R.rpc('unavailable_booking_dates',{p_start:start,p_end:end});
+      return {busy:busy.map(x=>x.event_date),events:bookings.filter(b=>['approved','completed'].includes(b.status)).map(b=>b.event_date)};
+    }});else calendar.refresh();
+  }finally{loader.hidden=true;}
+}
 async function loadCustomers(){
-  customerRows=R.check(await db.from('profiles').select('user_id,full_name,email,phone,deleted_at').is('deleted_at',null).order('created_at',{ascending:false}).limit(500));
-  customerRoles=R.check(await db.from('account_roles').select('user_id,role'));
-  renderCustomers();
+  const requestId=++customersRequest;
+  const tbody=$('customer-list');
+  tbody.innerHTML='<tr><td colspan="6">Loading registered accounts…</td></tr>';
+  try{
+    const rows=await R.rpc('roma_admin_list_customers',{
+      p_search: $('customer-search').value.trim(),
+      p_limit:CUSTOMERS_PAGE_SIZE,
+      p_offset:customerOffset
+    });
+    if(requestId!==customersRequest)return;
+    customerRows=rows||[];
+    customerTotal=Number(rows?.[0]?.total_count||0);
+    renderCustomers();
+  }catch(err){
+    if(requestId!==customersRequest)return;
+    tbody.innerHTML='<tr><td colspan="6">Unable to load customers. '+R.esc(R.readable(err))+'</td></tr>';
+    $('customer-count').textContent='Customer directory unavailable';
+    R.notify(R.readable(err),'error');
+  }
 }
 function renderCustomers(){
-  const term=($('customer-search').value||'').trim().toLowerCase();
-  const filtered=customerRows.filter(c=>[c.full_name,c.email,c.phone].some(x=>String(x||'').toLowerCase().includes(term)));
-  const roleOf=(id)=>customerRoles.find(r=>r.user_id===id)?.role||'customer';
+  const filtered=customerRows;
   $('customer-list').innerHTML=filtered.length?filtered.map(c=>{
-    const role=roleOf(c.user_id);
+    const role=c.role||'customer';
     const canDelete=c.user_id!==user.id && role!=='super_admin';
-    return `<tr><td>${R.esc(c.full_name||'Customer')}</td><td>${R.esc(c.email)}</td><td>${R.esc(c.phone)}</td><td>${R.esc(role)}</td><td>${canDelete?`<button class="roma-btn warn tiny" data-delete-user="${c.user_id}" type="button">Delete User</button>`:'Protected administrator'}</td></tr>`;
-  }).join(''):'<tr><td colspan="5">No matching customers.</td></tr>';
-}
-async function deleteCustomer(userId){
-  const target=customerRows.find(c=>c.user_id===userId);
-  if(!target)throw Error('Customer not found. Refresh the list.');
-  const label=target.email||target.full_name||userId;
-  const response=window.prompt(`Delete the customer account ${label}?\n\nRemoves login access and private ID/payment-proof files, while preserving booking and payment records.\n\nType DELETE to confirm:`);
-  if(response!=='DELETE')return;
-  const {data,error}=await db.functions.invoke('roma-user-admin',{body:{action:'delete_customer',user_id:userId}});
-  if(error)throw new Error(data?.error||error.message||'Unable to delete the customer');
-  if(data?.error)throw Error(data.error);
-  R.notify('Customer login access removed. Booking history preserved.','success');
-  await loadCustomers();
+    const verified=c.email_verified?'Verified':'Awaiting verification';
+    const joined=c.registered_at?new Date(c.registered_at).toLocaleDateString('en-PH',{dateStyle:'medium'}):'—';
+    return `<tr><td>${R.esc(c.full_name||'Customer')}</td><td>${R.esc(c.email)}<br><small class="roma-muted">${verified}</small></td><td>${R.esc(c.phone)}</td><td>${R.esc(role)}</td><td>${R.esc(joined)}</td><td>${canDelete?`<button class="roma-btn warn tiny" data-delete-user="${c.user_id}" type="button">Delete User</button>`:'Protected administrator'}</td></tr>`;
+  }).join(''):'<tr><td colspan="6">No registered accounts match your search.</td></tr>';
+  const from=customerTotal?customerOffset+1:0;
+  const to=customerTotal?Math.min(customerOffset+customerRows.length,customerTotal):0;
+  $('customer-count').textContent=`Showing ${from}–${to} of ${customerTotal} registered accounts`;
+  $('customers-prev').disabled=customerOffset===0;
+  $('customers-next').disabled=customerOffset+CUSTOMERS_PAGE_SIZE>=customerTotal;
 }
 async function loadBookings(){bookings=R.check(await db.from('bookings').select('*').order('created_at',{ascending:false}).limit(250));const summary=[['Recent bookings',bookings.length],['Awaiting approval',bookings.filter(b=>b.status==='pending_approval').length],['Verified payments',R.money(bookings.reduce((sum,b)=>sum+Number(b.paid_centavos),0))],['Remaining balances',R.money(bookings.filter(b=>['approved','completed'].includes(b.status)).reduce((sum,b)=>sum+Number(b.total_centavos-b.paid_centavos),0))]];$('admin-summary').innerHTML=summary.map(([label,value])=>`<div class="roma-card"><span class="roma-muted">${label} (shown records)</span><h3>${value}</h3></div>`).join('');
 $('admin-booking-list').innerHTML=bookings.length?bookings.map(b=>`<div class="roma-booking"><button data-select-booking="${b.id}"><strong>${R.esc(b.reference_number)}</strong><br>${R.esc(b.service_name_snapshot)} · ${R.datePH(b.event_date)}<br><span class="roma-pill">${R.esc(b.status.replaceAll('_',' '))}</span><br><small>${R.money(b.total_centavos)} · Paid ${R.money(b.paid_centavos)}</small></button></div>`).join(''):'<div class="roma-empty">No submitted or draft bookings yet.</div>';
@@ -86,7 +115,18 @@ $('admin-login').addEventListener('submit',safe(async e=>{const f=e.currentTarge
 $('admin-logout').addEventListener('click',safe(async()=>{R.check(await db.auth.signOut());user=null;selectedBooking=null;await initialize();}));
 document.querySelectorAll('[data-admin-tab]').forEach(b=>b.addEventListener('click',()=>{tab(b.dataset.adminTab);if(b.dataset.adminTab==='customers')loadCustomers().catch(e=>R.notify(R.readable(e),'error'));}));
 $('refresh-customers').addEventListener('click',safe(loadCustomers));
-$('customer-search').addEventListener('input',renderCustomers);
+$('customer-search').addEventListener('input',()=>{
+  window.clearTimeout(customerSearchTimer);
+  customerSearchTimer=window.setTimeout(()=>{customerOffset=0;loadCustomers();},300);
+});
+$('customers-prev').addEventListener('click',safe(async()=>{
+  customerOffset=Math.max(0,customerOffset-CUSTOMERS_PAGE_SIZE);
+  await loadCustomers();
+}));
+$('customers-next').addEventListener('click',safe(async()=>{
+  customerOffset+=CUSTOMERS_PAGE_SIZE;
+  await loadCustomers();
+}));
 $('reload-bookings').addEventListener('click',safe(loadBookings));
 $('service-form').addEventListener('submit',safe(saveService));$('service-reset').addEventListener('click',serviceReset);
 $('method-form').addEventListener('submit',safe(saveMethod));$('method-reset').addEventListener('click',methodReset);

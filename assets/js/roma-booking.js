@@ -24,8 +24,29 @@ form.elements.event_date.min=new Date(Date.now()-new Date().getTimezoneOffset()*
 const update=()=>{const opt=form.elements.option_code.value;$('price-preview').textContent=`Contract amount: ${R.money(priceFor(svc,opt))} · Required upfront: ${R.money(initialFor(svc,opt))}`};
 form.elements.option_code.onchange=update;update();panel.scrollIntoView({behavior:'smooth',block:'start'});}
 async function profileLoad(){if(!user)return;const data=R.check(await db.from('profiles').select('*').eq('user_id',user.id).single());const form=$('profile-form');form.elements.full_name.value=data.full_name||'';form.elements.phone.value=data.phone||'';form.elements.email.value=user.email||'';}
-async function loginState(){user=await R.loggedIn();$('auth-view').hidden=!!user;$('client-view').hidden=!user;$('logout').hidden=!user;$('admin-link').hidden=true;
-if(user){$('admin-link').hidden=!(await R.isAdmin(user));await Promise.all([servicesLoad(),profileLoad(),loadBookings()]);if(!calendar)calendar=window.RomaCalendar.mount('calendar-customer',{fetchMonth:async(start,end)=>({busy:(await R.rpc('unavailable_booking_dates',{p_start:start,p_end:end})).map(r=>r.event_date)}),onPick:iso=>{const f=$('new-booking-form');f.elements.event_date.value=iso;updateAvailability().catch(e=>R.notify(R.readable(e),'error'));}});}else await servicesLoad();}
+async function loginState(){
+const loader=$('auth-loader');
+loader.hidden=false;
+$('auth-view').hidden=true;
+$('client-view').hidden=true;
+try{
+  user=await R.loggedIn();
+  $('logout').hidden=!user;
+  $('admin-link').hidden=true;
+  if(user){
+    $('client-view').hidden=false;
+    $('admin-link').hidden=!(await R.isAdmin(user));
+    await Promise.all([servicesLoad(),profileLoad(),loadBookings()]);
+    if(!calendar) calendar=window.RomaCalendar.mount('calendar-customer',{
+      fetchMonth:async(start,end)=>({busy:(await R.rpc('unavailable_booking_dates',{p_start:start,p_end:end})).map(r=>r.event_date)}),
+      onPick:iso=>{const f=$('new-booking-form');f.elements.event_date.value=iso;updateAvailability().catch(e=>R.notify(R.readable(e),'error'));}
+    });
+  }else{
+    $('auth-view').hidden=false;
+    await servicesLoad();
+  }
+}finally{loader.hidden=true;}
+}
 async function loadBookings(prefer){if(!user)return;myBookings=R.check(await db.from('bookings').select('*').order('created_at',{ascending:false}));
 $('my-bookings').innerHTML=myBookings.length?myBookings.map(b=>`<div class="roma-booking ${b.id===selected?'selected':''}"><button data-booking="${b.id}"><strong>${R.esc(b.reference_number)}</strong><br>${R.esc(b.service_name_snapshot)}<br>${R.datePH(b.event_date)}<br><span class="roma-pill">${R.esc(b.status.replaceAll('_',' '))}</span></button></div>`).join(''):'<div class="roma-empty">No bookings yet. Select a service to begin.</div>';
 const id=prefer||selected;if(id&&myBookings.some(b=>b.id===id))await displayBooking(id);else $('my-booking-details').innerHTML='<p>Select a booking to see its information and next required action.</p>';
